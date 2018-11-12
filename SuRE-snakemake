@@ -152,9 +152,9 @@ rule iPCR_trim:
   input:
     lambda wildcards: [os.path.join(iPCR_FASTQ_DIR, f) for f in iPCR_SAMPLE2FILES[wildcards.s]]
   output:
-    os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_forw.fastq.gz"), 
-    os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_rev.fastq.gz"),
-    os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_forw.info")
+    temp(os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_forw.fastq.gz")), 
+    temp(os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_rev.fastq.gz")),
+    temp(os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_forw.info"))
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}", "fastq1"),
     cutmotif=lambda wildcards: iPCR_SAMPLES[wildcards.s]["CUTMOTIF"],
@@ -193,7 +193,7 @@ rule iPCR_WASP_filter_remapped_reads:
     to_remap_bam=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}.to.remap.bam"),
     remap_bam=os.path.join(iPCR_OUTDIR,"{s}","map2_sort","{s}_{c}.bam")
   output:
-    keep_bam=os.path.join(iPCR_OUTDIR,"{s}","filter_remapped_reads","{s}_{c}.keep.bam")
+    keep_bam=temp(os.path.join(iPCR_OUTDIR,"{s}","filter_remapped_reads","{s}_{c}.keep.bam"))
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}","filter_remapped_reads")
   conda: CONDA_ENV_PY2
@@ -207,7 +207,7 @@ rule iPCR_splitBAM:
   input:
     os.path.join(iPCR_OUTDIR,"{s}","map1_sort", "{s}.bam")
   output:
-    expand(os.path.join(iPCR_OUTDIR,"{{s}}","map1_sort", "{{s}}_{c}.bam"),c=CHR_TARGET)
+    temp(expand(os.path.join(iPCR_OUTDIR,"{{s}}","map1_sort", "{{s}}_{c}.bam"),c=CHR_TARGET))
   params:
     noext=os.path.join(iPCR_OUTDIR,"{s}","map1_sort","{s}_")
   conda: CONDA_ENV
@@ -219,7 +219,7 @@ rule iPCR_WASP_sort_and_index_bam:
   input:
     os.path.join(iPCR_OUTDIR,"{s}","map{p}","{b}.bam")
   output:
-    os.path.join(iPCR_OUTDIR,"{s}","map{p}_sort","{b}.bam")
+    temp(os.path.join(iPCR_OUTDIR,"{s}","map{p}_sort","{b}.bam"))
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}","map{p}_sort")
   threads: 
@@ -260,7 +260,7 @@ rule iPCR_WASP_merge_bams:
     keep1=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}.keep.bam"),
     keep2=os.path.join(iPCR_OUTDIR,"{s}","filter_remapped_reads","{s}_{c}.keep.bam")
   output:
-    merge=os.path.join(iPCR_OUTDIR,"{s}","merge","{s}_{c}.keep.merge.bam"),
+    merge=temp(os.path.join(iPCR_OUTDIR,"{s}","merge","{s}_{c}.keep.merge.bam"))
   threads: 
     4
   params:
@@ -279,7 +279,7 @@ def iPCR_map_input(wildcards):
 rule iPCR_map:
   input: iPCR_map_input
   output:
-    bamfinal=os.path.join(iPCR_OUTDIR,"{s}","{s}_{c}.bam")
+    bamfinal=temp(os.path.join(iPCR_OUTDIR,"{s}","{s}_{c}.bam"))
   threads:
     4
   conda: CONDA_ENV
@@ -291,7 +291,7 @@ rule iPCR_bam2bedpe:
     os.path.join(iPCR_OUTDIR,"{s}","{s}_{c}.bam"),
     os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_forw.info")
   output:
-    os.path.join(iPCR_OUTDIR, "{s}", "{s}_{c}.bedpe.gz")
+    temp(os.path.join(iPCR_OUTDIR, "{s}", "{s}_{c}.bedpe.gz"))
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}"),
     basename="{s}"
@@ -312,7 +312,7 @@ rule iPCR_merge_bedpe:
   input:
     expand(os.path.join(iPCR_OUTDIR, "{s}", "{s}_{{c}}.bedpe.gz"), s=iPCR_SAMPLES.keys())
   output:
-    os.path.join(iPCR_OUTDIR, "bed-annot", "iPCR-combined-bedpe_{c}.txt.gz")
+    temp(os.path.join(iPCR_OUTDIR, "bed-annot", "iPCR-combined-bedpe_{c}.txt.gz"))
   params:
     dir=os.path.join(iPCR_OUTDIR, "bed-annot")
   conda: CONDA_ENV
