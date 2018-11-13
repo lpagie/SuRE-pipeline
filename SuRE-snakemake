@@ -38,7 +38,7 @@ CONDA_ENV_PY2           = os.path.join(CODE_BASE, 'conda-env-py2.yml')
 SAMTOOLS                = "samtools"
 WASP_DIR                = os.path.join(CODE_BASE, "WASP/mapping")
 PY2_WASP                = "PYTHONPATH=$PYTHONPATH:" + WASP_DIR + " python2.7 "
-SNP_DIR                 = "/DATA/home/ludo/projects/LP140430_SureSeq_JvArensbergen/data/LP170210_SuRE42-45_1000Genomes/"
+SNP_DIR                 = "/DATA/usr/ludo/projects/LP140430_SureSeq_JvArensbergen/data/LP170210_SuRE42-45_1000Genomes/"
 SPLITBAM                = "bam splitChromosome "
 
 cDNA_script             = os.path.join(CODE_BASE, "cDNA-plDNA-count-BC.bash")
