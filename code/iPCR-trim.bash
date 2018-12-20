@@ -250,6 +250,7 @@ STATS="${OUTDIR}/${BASENAME}.stats"
 ### READS TRIMMING ######
 #########################
 # construct cutadapt command:
+ADPTR_3PRIME=""
 createCMD () {
 #CMD="${CUTADAPT} -g ${ADPTR} -o ${OUTDIR}/${BASENAME}_${DIR}.fastq --discard-untrimmed \
 #       --info-file=${OUTDIR}/${BASENAME}_${DIR}.info -O4 ${FASTQ} >> ${OUTDIR}/${BASENAME}_${DIR}.stats"
@@ -264,6 +265,11 @@ then
          ${OUTDIR}/tmp.${BASENAME}_${DIR}.fastq >> ${OUTDIR}/${BASENAME}_${DIR}.stats; \
 	 rm -f ${OUTDIR}/tmp.${BASENAME}_${DIR}.fastq"
 fi
+CMD="${CMD}; \
+       mv ${OUTDIR}/${BASENAME}_${DIR}.fastq ${OUTDIR}/tmp.${BASENAME}_${DIR}.fastq; \
+       ${CUTADAPT} -a ${ADPTR_3PRIME} -o ${OUTDIR}/${BASENAME}_${DIR}.fastq -O4 \
+       ${OUTDIR}/tmp.${BASENAME}_${DIR}.fastq >> ${OUTDIR}/${BASENAME}_${DIR}.stats; \
+       rm -f ${OUTDIR}/tmp.${BASENAME}_${DIR}.fastq"
 }
 
 # trim forw read #
@@ -272,6 +278,7 @@ echo "forward reads file = ${FASTQ_FNAMES[0]}"
 echo "starting to trim adapter in forward reads; trim adapter from 5'" 
 echo "and trim all after digest restriction site (${RESTRICT_SITE}) site on 3'"
 ADPTR=${ADPTR_FORW_SEQ}
+ADPTR_3PRIME=$( echo ${ADPTR_REV_SEQ} | grep '^[atcgATCG]' | rev | tr atcgATCG tagcTAGC )
 FASTQ=${FASTQ_FNAMES[0]}
 DIR=forw
 createCMD;
@@ -300,6 +307,7 @@ echo "reverse reads file = ${FASTQ_FNAMES[1]}"
 echo "starting to trim adapter in reverse reads; trim adapter from 5'" 
 echo "and trim all after digest restriction site (${RESTRICT_SITE}) site on 3'"
 ADPTR=${ADPTR_REV_SEQ}
+ADPTR_3PRIME=$( echo ${ADPTR_FORW_SEQ} | grep '^[atcgATCG]' | rev | tr atcgATCG tagcTAGC ) 
 FASTQ=${FASTQ_FNAMES[1]}
 DIR=rev
 createCMD;
