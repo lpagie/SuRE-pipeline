@@ -243,8 +243,8 @@ rule iPCR_WASP_map_bowtie2_paired_end:
     dir=os.path.join(iPCR_OUTDIR,"{s}","map{p}"),
     stats=os.path.join(iPCR_OUTDIR,"{s}","{b}.stats"),
     basename="{b}",
-    refseq=BOWTIE2_REFSEQ,
     maxInsert=MAX_INSERT_LENGTH
+    refseq=config["BOWTIE2_REFSEQ"],
   threads: 
     5
   resources:
