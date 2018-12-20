@@ -13,8 +13,7 @@ import subprocess
 # check if snakefile originates from a 'clean' git repos
 snakefilename = inspect.getframeinfo(inspect.currentframe()).filename
 repospath = os.path.dirname(os.path.abspath(snakefilename))
-# repos_state = subprocess.run('cd '+repospath+'; [ -z "$( git status --porcelain )" ] && exit 0 || exit 1', stdout=subprocess.PIPE, shell=True, universal_newlines=True)
-repos_state = subprocess.run('cd '+repospath+'; [ -z "$( git diff --exit-code )" ] && [ -z "$(git diff --exit-code --cached )" ] && exit 0 || exit 1', stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+repos_state = subprocess.run('cd '+repospath+'; [ -z "$( git status --porcelain )" ] && exit 0 || exit 1', stdout=subprocess.PIPE, shell=True, universal_newlines=True)
 if repos_state.returncode != 0:
         print("\nYour snakefile is modified relative to the git repos", file=sys.stderr)
         print("Either undo your changes, or commit them", file=sys.stderr)
@@ -53,7 +52,9 @@ merge_all_script        = os.path.join(CODE_BASE, "merge-iPCR-cDNA-plDNA.bash")
 add_homozygous_baseIdentities_script = os.path.join(CODE_BASE, "add-homozygous-baseIndentities.bash")
 
 ADPT_SEQ                = config["ADPT_SEQ"]
-# BOWTIE2_REFSEQ          = config["BOWTIE2_REFSEQ"]
+ADPTR_IPCR_FORW_SEQ     = config["ADPTR_IPCR_FORW_SEQ"]
+ADPTR_IPCR_REV_SEQ      = config["ADPTR_IPCR_REV_SEQ"]
+BOWTIE2_REFSEQ          = config["BOWTIE2_REFSEQ"]
 MAX_INSERT_LENGTH       = config["MAX_INSERT_LENGTH"]
 NCORES                  = config["NCORES"]
 OUTDIR                  = config["OUTDIR"]
@@ -155,11 +156,10 @@ rule iPCR_trim:
     os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_rev.fastq.gz"),
     os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_forw.info")
   params:
-    dir=os.path.join(iPCR_OUTDIR,"{s}", "fastq_trimmed"),
-    # cutmotif=lambda wildcards: iPCR_SAMPLES[wildcards.s]["CUTMOTIF"],
-    cutmotif=lambda wildcards: config["iPCR"][wildcards.s]["CUTMOTIF"],
-    forwAdaptr=config["ADPTR_IPCR_FORW_SEQ"],
-    revAdaptr=config["ADPTR_IPCR_REV_SEQ"],
+    dir=os.path.join(iPCR_OUTDIR,"{s}", "fastq1"),
+    cutmotif=lambda wildcards: iPCR_SAMPLES[wildcards.s]["CUTMOTIF"],
+    forwAdaptr=ADPTR_IPCR_FORW_SEQ,
+    revAdaptr=ADPTR_IPCR_REV_SEQ,
     basename="{s}"
   conda: CONDA_ENV
   shell:
@@ -243,7 +243,7 @@ rule iPCR_WASP_map_bowtie2_paired_end:
     dir=os.path.join(iPCR_OUTDIR,"{s}","map{p}"),
     stats=os.path.join(iPCR_OUTDIR,"{s}","{b}.stats"),
     basename="{b}",
-    refseq=config["BOWTIE2_REFSEQ"],
+    refseq=BOWTIE2_REFSEQ,
     maxInsert=MAX_INSERT_LENGTH
   threads: 
     5
