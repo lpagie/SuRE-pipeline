@@ -197,7 +197,8 @@ rule iPCR_WASP_filter_remapped_reads:
     "{PY2_WASP} {WASP_DIR}/filter_remapped_reads.py "
     "  {input.to_remap_bam} {input.remap_bam} {output.keep_bam}"
 
-ruleorder: iPCR_splitBAM > iPCR_WASP_sort_and_index_bam > iPCR_WASP_map_bowtie2_paired_end
+# ruleorder: iPCR_splitBAM > iPCR_WASP_sort_and_index_bam > iPCR_WASP_map_bowtie2_paired_end
+ruleorder: iPCR_splitBAM > iPCR_map_bowtie2_paired_end
 rule iPCR_splitBAM:
   input:
     os.path.join(iPCR_OUTDIR,"{s}","map1_sort", "{s}.bam")
@@ -228,16 +229,18 @@ rule iPCR_WASP_sort_and_index_bam:
     "{SAMTOOLS} index {output[0]} ; "
 
 
-rule iPCR_WASP_map_bowtie2_paired_end:
+# rule iPCR_WASP_map_bowtie2_paired_end:
+rule iPCR_map_bowtie2_paired_end:
   input:
     os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_forw.fastq.gz"),
     os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_rev.fastq.gz")
   output:
-    os.path.join(iPCR_OUTDIR,"{s}","map{p}","{b}.bam")
+    os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_{p}.bam")
+    # os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_{p}.bam")
   params:
-    dir=os.path.join(iPCR_OUTDIR,"{s}","map{p}"),
-    stats=os.path.join(iPCR_OUTDIR,"{s}","{b}.stats"),
-    basename="{b}",
+    dir=os.path.join(iPCR_OUTDIR,"{s}","mapped"),
+    stats=os.path.join(iPCR_OUTDIR,"{s}","{s}_{p}.stats"),
+    basename="{s}_{p}",
     refseq=lambda wildcards: os.path.join(config["BOWTIE2_INDEX_DIR"], config["BOWTIE2_PARENTAL"][config["GID"]][wildcards.p]),
     maxInsert=config["MAX_INSERT_LENGTH"]
   threads: 
