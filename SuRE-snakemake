@@ -50,6 +50,7 @@ iPCR_merge_script       = os.path.join(CODE_BASE, "iPCR-merge-bedpe-Filter-BC-mu
 split_bedpe_script      = os.path.join(CODE_BASE, "split-bedpe2chr.sh")
 merge_all_script        = os.path.join(CODE_BASE, "merge-iPCR-cDNA-plDNA.bash")
 add_homozygous_baseIdentities_script = os.path.join(CODE_BASE, "add-homozygous-baseIndentities.bash")
+ASSIGN_PARENT_SCRIPT    = os.path.join(CODE_BASE, "iPCR_assign_parent.py")
 
 ADPTR_IPCR_FORW_SEQ     = config["ADPTR_IPCR_FORW_SEQ"]
 ADPTR_IPCR_REV_SEQ      = config["ADPTR_IPCR_REV_SEQ"]
@@ -252,21 +253,37 @@ rule iPCR_map_bowtie2_paired_end:
   shell:
     "{iPCR_mapOnly_script} -o '{params.dir}' -l -n {threads} -t $PWD/'{params.stats}' -b '{params.basename}' -m '{params.maxInsert}' -s '{params.refseq}' -c {input}"
 
-rule iPCR_WASP_merge_bams:
-  """merge 'keep' BAM files from mapping steps 1 and 2, then sort and index"""
+rule iPCR_assign_parent:
   input:
-    keep1=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}.keep.bam"),
-    keep2=os.path.join(iPCR_OUTDIR,"{s}","filter_remapped_reads","{s}_{c}.keep.bam")
+    paternal=os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_paternal.bam"),
+    maternal=os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_maternal.bam")
   output:
-    merge=os.path.join(iPCR_OUTDIR,"{s}","merge","{s}_{c}.keep.merge.bam"),
-  threads: 
-    4
-  params:
-    dir=os.path.join(iPCR_OUTDIR,"{s}","merge")
+    os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}_{p}.bam")
   conda: CONDA_ENV
+  params:
+    dir=os.path.join(iPCR_OUTDIR,"{s}","assigned"),
+    basename=os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}")
+  threads: 4
   shell:
     "mkdir -p '{params.dir}' ; "
-    "{SAMTOOLS} merge {output.merge} {input.keep1} {input.keep2}; "
+    "python {ASSIGN_PARENT_SCRIPT} --bp {input.paternal} --bm {input.maternal} --basename '{params.basename}' ; "
+    # "{SAMTOOLS} merge {output.merge} {input.keep1} {input.keep2}; "
+
+##  rule iPCR_WASP_merge_bams:
+##    """merge 'keep' BAM files from mapping steps 1 and 2, then sort and index"""
+##    input:
+##      keep1=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}.keep.bam"),
+##      keep2=os.path.join(iPCR_OUTDIR,"{s}","filter_remapped_reads","{s}_{c}.keep.bam")
+##    output:
+##      merge=os.path.join(iPCR_OUTDIR,"{s}","merge","{s}_{c}.keep.merge.bam"),
+##    threads:
+##      4
+##    params:
+##      dir=os.path.join(iPCR_OUTDIR,"{s}","merge")
+##    conda: CONDA_ENV
+##    shell:
+##      "mkdir -p '{params.dir}' ; "
+##      "{SAMTOOLS} merge {output.merge} {input.keep1} {input.keep2}; "
 
 def iPCR_map_input(wildcards):
   if (ALLELE_SPECIFIC):
