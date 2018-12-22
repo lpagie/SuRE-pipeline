@@ -238,7 +238,7 @@ rule iPCR_WASP_map_bowtie2_paired_end:
     dir=os.path.join(iPCR_OUTDIR,"{s}","map{p}"),
     stats=os.path.join(iPCR_OUTDIR,"{s}","{b}.stats"),
     basename="{b}",
-    refseq=BOWTIE2_REFSEQ,
+    refseq=lambda wildcards: os.path.join(config["BOWTIE2_INDEX_DIR"], config["BOWTIE2_PARENTAL"][config["GID"]][wildcards.p]),
     maxInsert=config["MAX_INSERT_LENGTH"]
   threads: 
     5
