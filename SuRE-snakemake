@@ -64,8 +64,6 @@ CHR_TARGET              = config["CHR_TARGET"]
 
 CHR_ALL                 = ["chr"+str(i) for i in range(1,23)]+['chrX','chrY','chrM']
 CHR_AVAIL=list(compress(CHR_ALL, [os.path.isfile(f) for f in expand(os.path.join(config["OUTDIR"], config["iPCR"]["OUTDIR"], "bed-annot", "iPCR-combined-bedpe_{c}_SNPannot.txt.gz"), c=CHR_ALL)]))
-#print("CHR_TARGET=")
-#print(CHR_TARGET)
 
 cDNA_SAMPLES=config["cDNA"]["SAMPLES"]
 if cDNA_SAMPLES is None:
@@ -107,8 +105,6 @@ else:
     sys.exit("GID is defined but SNP directory doesn't exist")
   print("reading SNPs from " + SNP_DIR)
   print("reading VCF from " + VCF_DIR)
-
-# TYPES=["cDNA","plDNA"]
 
 include: os.path.join(CODE_BASE, "bed2coverage/bed2coverage.rule")
 
