@@ -147,11 +147,11 @@ rule iPCR_trim:
   input:
     lambda wildcards: [os.path.join(iPCR_FASTQ_DIR, f) for f in iPCR_SAMPLE2FILES[wildcards.s]]
   output:
-    os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_forw.fastq.gz"), 
-    os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_rev.fastq.gz"),
-    os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_forw.info")
+    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_forw.fastq.gz"),
+    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_rev.fastq.gz"),
+    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_forw.info")
   params:
-    dir=os.path.join(iPCR_OUTDIR,"{s}", "fastq1"),
+    dir=os.path.join(iPCR_OUTDIR,"{s}", "fastq_trimmed"),
     cutmotif=lambda wildcards: iPCR_SAMPLES[wildcards.s]["CUTMOTIF"],
     forwAdaptr=ADPTR_IPCR_FORW_SEQ,
     revAdaptr=ADPTR_IPCR_REV_SEQ,
@@ -230,8 +230,8 @@ rule iPCR_WASP_sort_and_index_bam:
 
 rule iPCR_WASP_map_bowtie2_paired_end:
   input:
-    os.path.join(iPCR_OUTDIR,"{s}","fastq{p}","{b}_forw.fastq.gz"),
-    os.path.join(iPCR_OUTDIR,"{s}","fastq{p}","{b}_rev.fastq.gz")
+    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_forw.fastq.gz"),
+    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_rev.fastq.gz")
   output:
     os.path.join(iPCR_OUTDIR,"{s}","map{p}","{b}.bam")
   params:
