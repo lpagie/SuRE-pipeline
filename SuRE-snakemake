@@ -175,17 +175,28 @@ rule iPCR_coordsort_bam:
 
 
 ruleorder: iPCR_splitBAM > iPCR_map_bowtie2_paired_end
-rule iPCR_splitBAM:
+rule iPCR_templateBAM:
   input:
-    os.path.join(iPCR_OUTDIR,"{s}","map1_sort", "{s}.bam")
+    "{f}.bam"
   output:
-    expand(os.path.join(iPCR_OUTDIR,"{{s}}","map1_sort", "{{s}}_{c}.bam"),c=CHR_TARGET)
-  params:
-    noext=os.path.join(iPCR_OUTDIR,"{s}","map1_sort","{s}_")
+    "{f}_{c}_{p,[mp]aternal}_template.bam"
   conda: CONDA_ENV
   shell:
-    "{SPLITBAM} --in {input} --out '{params.noext}'; "
-    "for f in '{params.noext}'*.bam; do {SAMTOOLS} index $f; done ; "
+    "samtools view -H -b {input} -o {output}"
+
+rule iPCR_splitBAM:
+  input:
+    input="{f}.bam",
+    template=expand("{{f}}_{c}_{{p}}aternal_template.bam",c=CHR_TARGET)
+  output:
+    "{f}_{c}_{p,[pm]}aternal.bam"
+  params:
+    noext="{f}_"
+  conda: CONDA_ENV
+  shell:
+    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); mv $f $new; done ; "
+    "{SPLITBAM} --in {input.input} --out '{params.noext}'; "
+    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); samtools index $new; done ; "
 
 rule iPCR_map_bowtie2_paired_end:
   input:
