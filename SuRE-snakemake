@@ -162,43 +162,6 @@ rule iPCR_trim:
     "{iPCR_trim_script} -o '{params.dir}' -l -d '{params.cutmotif}' -b '{params.basename}' -f '{params.forwAdaptr}' -r '{params.revAdaptr}' -c {input}; "
     "gzip '{params.dir}'/*fastq"
 
-##  rule iPCR_WASP_find_SNPs:
-##    """find intersecting SNPs using WASP script"""
-##    input:
-##      bam=os.path.join(iPCR_OUTDIR,"{s}","map1_sort","{s}_{c}.bam"),
-##      snpdir=SNP_DIR
-##    output:
-##      fastq1=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}_forw.fastq.gz"),
-##      fastq2=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}_rev.fastq.gz"),
-##      keep=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}.keep.bam"),
-##      remap=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}.to.remap.bam")
-##    params:
-##      dir=os.path.join(iPCR_OUTDIR,"{s}","fastq2"),
-##      bname="{s}_{c}"
-##    conda: CONDA_ENV_PY2
-##    shell:
-##      "mkdir -p '{params.dir}' ; "
-##      "{PY2_WASP} {WASP_DIR}/find_intersecting_snps.py "
-##      "--is_paired_end --is_sorted --output_dir '{params.dir}' --snp_dir {input.snpdir} {input.bam}; "
-##      "mv '{params.dir}'/'{params.bname}'.remap.fq1.gz {output[0]}; "
-##      "mv '{params.dir}'/'{params.bname}'.remap.fq2.gz {output[1]}; "
-
-## rule iPCR_WASP_filter_remapped_reads:
-##   """filter reads from second mapping step"""
-##   input:
-##     to_remap_bam=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}.to.remap.bam"),
-##     remap_bam=os.path.join(iPCR_OUTDIR,"{s}","map2_sort","{s}_{c}.bam")
-##   output:
-##     keep_bam=os.path.join(iPCR_OUTDIR,"{s}","filter_remapped_reads","{s}_{c}.keep.bam")
-##   params:
-##     dir=os.path.join(iPCR_OUTDIR,"{s}","filter_remapped_reads")
-##   conda: CONDA_ENV_PY2
-##   shell:
-##     "mkdir -p '{params.dir}' ; "
-##     "{PY2_WASP} {WASP_DIR}/filter_remapped_reads.py "
-##     "  {input.to_remap_bam} {input.remap_bam} {output.keep_bam}"
-
-# ruleorder: iPCR_splitBAM > iPCR_WASP_sort_and_index_bam > iPCR_WASP_map_bowtie2_paired_end
 ruleorder: iPCR_splitBAM > iPCR_map_bowtie2_paired_end
 rule iPCR_splitBAM:
   input:
@@ -212,25 +175,6 @@ rule iPCR_splitBAM:
     "{SPLITBAM} --in {input} --out '{params.noext}'; "
     "for f in '{params.noext}'*.bam; do {SAMTOOLS} index $f; done ; "
 
-##  rule iPCR_WASP_sort_and_index_bam:
-##    input:
-##      os.path.join(iPCR_OUTDIR,"{s}","map{p}","{b}.bam")
-##    output:
-##      os.path.join(iPCR_OUTDIR,"{s}","map{p}_sort","{b}.bam")
-##    params:
-##      dir=os.path.join(iPCR_OUTDIR,"{s}","map{p}_sort")
-##    threads:
-##      4
-##    conda: CONDA_ENV
-##    resources:
-##      ram=25
-##    shell:
-##      "mkdir -p '{params.dir}' ; "
-##      "{SAMTOOLS} sort -o {output[0]} -@ {threads} -m 1G {input} -T {output[0]} ; "
-##      "{SAMTOOLS} index {output[0]} ; "
-
-
-# rule iPCR_WASP_map_bowtie2_paired_end:
 rule iPCR_map_bowtie2_paired_end:
   input:
     os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_forw.fastq.gz"),
@@ -267,23 +211,6 @@ rule iPCR_assign_parent:
   shell:
     "mkdir -p '{params.dir}' ; "
     "python {ASSIGN_PARENT_SCRIPT} --bp {input.paternal} --bm {input.maternal} --basename '{params.basename}' ; "
-    # "{SAMTOOLS} merge {output.merge} {input.keep1} {input.keep2}; "
-
-##  rule iPCR_WASP_merge_bams:
-##    """merge 'keep' BAM files from mapping steps 1 and 2, then sort and index"""
-##    input:
-##      keep1=os.path.join(iPCR_OUTDIR,"{s}","fastq2","{s}_{c}.keep.bam"),
-##      keep2=os.path.join(iPCR_OUTDIR,"{s}","filter_remapped_reads","{s}_{c}.keep.bam")
-##    output:
-##      merge=os.path.join(iPCR_OUTDIR,"{s}","merge","{s}_{c}.keep.merge.bam"),
-##    threads:
-##      4
-##    params:
-##      dir=os.path.join(iPCR_OUTDIR,"{s}","merge")
-##    conda: CONDA_ENV
-##    shell:
-##      "mkdir -p '{params.dir}' ; "
-##      "{SAMTOOLS} merge {output.merge} {input.keep1} {input.keep2}; "
 
 def iPCR_map_input(wildcards):
   if (ALLELE_SPECIFIC):
@@ -291,16 +218,6 @@ def iPCR_map_input(wildcards):
   else:
     return os.path.join(iPCR_OUTDIR,wildcards.s,"map1_sort",wildcards.s+"_"+wildcards.c+".bam")
 
-##  rule iPCR_map:
-##    input: iPCR_map_input
-##    output:
-##      bamfinal=os.path.join(iPCR_OUTDIR,"{s}","{s}_{c}.bam")
-##    threads:
-##      4
-##    conda: CONDA_ENV
-##    shell:
-##      "{SAMTOOLS} sort -n -o {output} -@ {threads} -m 20G  {input} -T {input}; "
-      
 rule iPCR_bam2bedpe:
   input:
     os.path.join(iPCR_OUTDIR,"{s}","{s}_{c}.bam"),
@@ -314,15 +231,6 @@ rule iPCR_bam2bedpe:
   shell:
     "{iPCR_bam2bedpe_script} -o '{params.dir}' -l -b '{params.basename}' {input}" 
 
-#rule iPCR_merge_bedpe:
-#  input:
-#     BEDPE_FILES
-#  output:
-#    os.path.join(iPCR_OUTDIR, "iPCR-combined-bedpe.txt.gz")
-#  shell:
-#    "{iPCR_merge_script} -l -o {iPCR_OUTDIR} {input}"
-#
-#rule iPCR_preMerge_WASP:
 rule iPCR_merge_bedpe:
   input:
     expand(os.path.join(iPCR_OUTDIR, "{s}", "{s}_{{c}}.bedpe.gz"), s=iPCR_SAMPLES.keys())
@@ -350,7 +258,6 @@ rule iPCR_annot_WASP:
     "{PY2_WASP} {WASP_DIR}/annotate_bedpe_LP170516.py --snp_dir {input.snpdir} {input.bedpe} | sort -k6 -S 20G | gzip -c > {output}.tmp ; "
     "{add_homozygous_baseIdentities_script} {input.vcf} {output}.tmp '{params.gid}' | gzip -c > {output} ;  "
     "rm -f {output}.tmp"
-#    "mv {output.out}.tmp {output.out}"
 
 def merge_all_input(wildcards):
   if (ALLELE_SPECIFIC):
@@ -370,9 +277,6 @@ rule merge_all:
   conda: CONDA_ENV
   shell:
     "{merge_all_script} -l -i {input.iPCR} -o {OUTDIR} -d {output.out} {input.cDNA} {input.plDNA} ; "
-#    "mv {outpout.out} {output.out}.tmp"
-#    "{add_homozygous_baseIdentities_script} {input.vcf} {output.out}.tmp '{params.gid}' | gzip -c > {output.out}; "
-#    "rm -f {output.out}.tmp"
 
 rule iPCR_single_QA:
   input:
