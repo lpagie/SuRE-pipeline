@@ -162,42 +162,6 @@ rule iPCR_trim:
     "{iPCR_trim_script} -o '{params.dir}' -l -d '{params.cutmotif}' -b '{params.basename}' -f '{params.forwAdaptr}' -r '{params.revAdaptr}' -c {input}; "
     "gzip '{params.dir}'/*fastq"
 
-rule iPCR_coordsort_bam:
-  input:
-    "{f}.bam"
-  output:
-    temp("{f}_coord-sort.bam"),
-    temp("{f}_coord-sort.bam.bai")
-  threads: 4
-  shell:
-    "{SAMTOOLS} sort -o {output} -@ {threads} -m 20G  {input} -T {output} ; "
-    "{SAMTOOLS} index {output} ; "
-
-
-ruleorder: iPCR_splitBAM > iPCR_map_bowtie2_paired_end
-rule iPCR_templateBAM:
-  input:
-    "{f}.bam"
-  output:
-    "{f}_{c}_{p,[mp]aternal}_template.bam"
-  conda: CONDA_ENV
-  shell:
-    "samtools view -H -b {input} -o {output}"
-
-rule iPCR_splitBAM:
-  input:
-    input="{f}.bam",
-    template=expand("{{f}}_{c}_{{p}}aternal_template.bam",c=CHR_TARGET)
-  output:
-    "{f}_{c}_{p,[pm]}aternal.bam"
-  params:
-    noext="{f}_"
-  conda: CONDA_ENV
-  shell:
-    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); mv $f $new; done ; "
-    "{SPLITBAM} --in {input.input} --out '{params.noext}'; "
-    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); samtools index $new; done ; "
-
 rule iPCR_map_bowtie2_paired_end:
   input:
     os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_forw.fastq.gz"),
@@ -235,11 +199,41 @@ rule iPCR_assign_parent:
     "mkdir -p '{params.dir}' ; "
     "python {ASSIGN_PARENT_SCRIPT} --bp {input.paternal} --bm {input.maternal} --basename '{params.basename}' ; "
 
-def iPCR_map_input(wildcards):
-  if (ALLELE_SPECIFIC):
-    return os.path.join(iPCR_OUTDIR,wildcards.s,"merge",wildcards.s+"_"+wildcards.c+".keep.merge.bam") 
-  else:
-    return os.path.join(iPCR_OUTDIR,wildcards.s,"map1_sort",wildcards.s+"_"+wildcards.c+".bam")
+rule iPCR_coordsort_bam:
+  input:
+    "{f}.bam"
+  output:
+    temp("{f}_coord-sort.bam"),
+    temp("{f}_coord-sort.bam.bai")
+  threads: 4
+  shell:
+    "{SAMTOOLS} sort -o {output} -@ {threads} -m 20G  {input} -T {output} ; "
+    "{SAMTOOLS} index {output} ; "
+
+
+# ruleorder: iPCR_splitBAM > iPCR_map_bowtie2_paired_end
+rule iPCR_templateBAM:
+  input:
+    "{f}.bam"
+  output:
+    "{f}_{c}_{p,[mp]aternal}_template.bam"
+  conda: CONDA_ENV
+  shell:
+    "samtools view -H -b {input} -o {output}"
+
+rule iPCR_splitBAM:
+  input:
+    input="{f}.bam",
+    template=expand("{{f}}_{c}_{{p}}aternal_template.bam",c=CHR_TARGET)
+  output:
+    "{f}_{c}_{p,[pm]}aternal.bam"
+  params:
+    noext="{f}_"
+  conda: CONDA_ENV
+  shell:
+    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); mv $f $new; done ; "
+    "{SPLITBAM} --in {input.input} --out '{params.noext}'; "
+    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); samtools index $new; done ; "
 
 rule iPCR_bam2bedpe:
   input:
@@ -253,6 +247,12 @@ rule iPCR_bam2bedpe:
   conda: CONDA_ENV
   shell:
     "{iPCR_bam2bedpe_script} -o '{params.dir}' -l -b '{params.basename}' {input}" 
+
+def iPCR_map_input(wildcards):
+  if (ALLELE_SPECIFIC):
+    return os.path.join(iPCR_OUTDIR,wildcards.s,"merge",wildcards.s+"_"+wildcards.c+".keep.merge.bam") 
+  else:
+    return os.path.join(iPCR_OUTDIR,wildcards.s,"map1_sort",wildcards.s+"_"+wildcards.c+".bam")
 
 rule iPCR_merge_bedpe:
   input:
