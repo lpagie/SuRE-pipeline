@@ -162,6 +162,18 @@ rule iPCR_trim:
     "{iPCR_trim_script} -o '{params.dir}' -l -d '{params.cutmotif}' -b '{params.basename}' -f '{params.forwAdaptr}' -r '{params.revAdaptr}' -c {input}; "
     "gzip '{params.dir}'/*fastq"
 
+rule iPCR_coordsort_bam:
+  input:
+    "{f}.bam"
+  output:
+    temp("{f}_coord-sort.bam"),
+    temp("{f}_coord-sort.bam.bai")
+  threads: 4
+  shell:
+    "{SAMTOOLS} sort -o {output} -@ {threads} -m 20G  {input} -T {output} ; "
+    "{SAMTOOLS} index {output} ; "
+
+
 ruleorder: iPCR_splitBAM > iPCR_map_bowtie2_paired_end
 rule iPCR_splitBAM:
   input:
