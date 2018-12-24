@@ -162,18 +162,41 @@ rule iPCR_trim:
     "{iPCR_trim_script} -o '{params.dir}' -l -d '{params.cutmotif}' -b '{params.basename}' -f '{params.forwAdaptr}' -r '{params.revAdaptr}' -c {input}; "
     "gzip '{params.dir}'/*fastq"
 
-ruleorder: iPCR_splitBAM > iPCR_map_bowtie2_paired_end
-rule iPCR_splitBAM:
+rule iPCR_coordsort_bam:
   input:
-    os.path.join(iPCR_OUTDIR,"{s}","map1_sort", "{s}.bam")
+    "{f}.bam"
   output:
-    expand(os.path.join(iPCR_OUTDIR,"{{s}}","map1_sort", "{{s}}_{c}.bam"),c=CHR_TARGET)
-  params:
-    noext=os.path.join(iPCR_OUTDIR,"{s}","map1_sort","{s}_")
+    temp("{f}_coord-sort.bam"),
+    temp("{f}_coord-sort.bam.bai")
+  threads: 4
+  shell:
+    "{SAMTOOLS} sort -o {output} -@ {threads} -m 20G  {input} -T {output} ; "
+    "{SAMTOOLS} index {output} ; "
+
+
+ruleorder: iPCR_splitBAM > iPCR_map_bowtie2_paired_end
+rule iPCR_templateBAM:
+  input:
+    "{f}.bam"
+  output:
+    "{f}_{c}_{p,[mp]aternal}_template.bam"
   conda: CONDA_ENV
   shell:
-    "{SPLITBAM} --in {input} --out '{params.noext}'; "
-    "for f in '{params.noext}'*.bam; do {SAMTOOLS} index $f; done ; "
+    "samtools view -H -b {input} -o {output}"
+
+rule iPCR_splitBAM:
+  input:
+    input="{f}.bam",
+    template=expand("{{f}}_{c}_{{p}}aternal_template.bam",c=CHR_TARGET)
+  output:
+    "{f}_{c}_{p,[pm]}aternal.bam"
+  params:
+    noext="{f}_"
+  conda: CONDA_ENV
+  shell:
+    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); mv $f $new; done ; "
+    "{SPLITBAM} --in {input.input} --out '{params.noext}'; "
+    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); samtools index $new; done ; "
 
 rule iPCR_map_bowtie2_paired_end:
   input:
