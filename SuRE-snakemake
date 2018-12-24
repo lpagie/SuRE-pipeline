@@ -168,7 +168,6 @@ rule iPCR_map_bowtie2_paired_end:
     os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_rev.fastq.gz")
   output:
     os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_{p}.bam")
-    # os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_{p}.bam")
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}","mapped"),
     stats=os.path.join(iPCR_OUTDIR,"{s}","{s}_{p}.stats"),
@@ -211,7 +210,6 @@ rule iPCR_coordsort_bam:
     "{SAMTOOLS} index {output} ; "
 
 
-# ruleorder: iPCR_splitBAM > iPCR_map_bowtie2_paired_end
 rule iPCR_templateBAM:
   input:
     "{f}.bam"
