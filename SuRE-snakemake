@@ -192,7 +192,8 @@ rule iPCR_assign_parent:
     paternal=os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_paternal.bam"),
     maternal=os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_maternal.bam")
   output:
-    temp(os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}_{p,(paternal)|(maternal)}.bam"))
+    temp(os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}_paternal.bam")),
+    temp(os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}_maternal.bam"))
   conda: CONDA_ENV
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}","assigned"),
