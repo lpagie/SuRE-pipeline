@@ -44,7 +44,7 @@ SPLITBAM                = "bam splitChromosome "
 cDNA_script             = os.path.join(CODE_BASE, "cDNA-plDNA-count-BC.bash")
 iPCR_trim_script        = os.path.join(CODE_BASE, "iPCR-trim.bash")
 iPCR_mapOnly_script     = os.path.join(CODE_BASE, "iPCR-map.bash")
-iPCR_bam2bedpe_script   = os.path.join(CODE_BASE, "iPCR-bam2bedpe.bash")
+iPCR_bam2bedpe_script   = os.path.join(CODE_BASE, "iPCR_bam_to_annotBed.py")
 iPCR_single_QA_script   = os.path.join(CODE_BASE, "iPCR-single-QA.bash")
 iPCR_merge_script       = os.path.join(CODE_BASE, "iPCR-merge-bedpe-Filter-BC-multi-pos.bash")
 split_bedpe_script      = os.path.join(CODE_BASE, "split-bedpe2chr.sh")
@@ -192,7 +192,8 @@ rule iPCR_assign_parent:
     paternal=os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_paternal.bam"),
     maternal=os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_maternal.bam")
   output:
-    temp(os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}_{p,(paternal)|(maternal)}.bam"))
+    temp(os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}_paternal.bam")),
+    temp(os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}_maternal.bam"))
   conda: CONDA_ENV
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}","assigned"),
@@ -204,51 +205,55 @@ rule iPCR_assign_parent:
 
 rule iPCR_coordsort_bam:
   input:
-    "{f}.bam"
+    os.path.join("{path}","{smpl}","assigned","{smpl}_{p}.bam")
   output:
-    temp("{f}_coord-sort.bam"),
-    temp("{f}_coord-sort.bam.bai")
+    bam=temp(os.path.join("{path}","{smpl}","sort_after_assign","{smpl}_{p,[pm]aternal}.bam")),
+    bai=temp(os.path.join("{path}","{smpl}","sort_after_assign","{smpl}_{p,[pm]aternal}.bam.bai"))
   threads: 4
+  conda: CONDA_ENV
   shell:
-    "{SAMTOOLS} sort -o {output} -@ {threads} -m 20G  {input} -T {output} ; "
-    "{SAMTOOLS} index {output} ; "
+    "samtools sort -o {output.bam} -@ {threads} -m 20G -T {output.bam} {input} ; "
+    "samtools index {output.bam} ; "
 
 
 rule iPCR_templateBAM:
   input:
-    "{f}.bam"
+    os.path.join("{path}","{f}_{p}.bam")
   output:
-    "{f}_{c}_{p,[mp]aternal}_template.bam"
+    os.path.join("{path}","{f}_{c}_{p,[mp]aternal}_template.bam")
   conda: CONDA_ENV
   shell:
     "samtools view -H -b {input} -o {output}"
 
 rule iPCR_splitBAM:
   input:
-    input="{f}.bam",
-    template=expand("{{f}}_{c}_{{p}}_template.bam",c=CHR_TARGET)
+    input=os.path.join("{path}","{smpl}","sort_after_assign","{s}_{p}.bam"),
+    template=expand(os.path.join("{{path}}","{{smpl}}","sort_after_assign","{{s}}_{c}_{{p}}_template.bam"),c=CHR_TARGET)
   output:
-    "{f}_{c}_{p,[pm]aternal}.bam"
+    os.path.join("{path}","{smpl}","split_bam","{s}_{c}_{p}.bam")
   params:
-    noext="{f}_"
+    noext=os.path.join("{path}","{smpl}","split_bam","{s}_")
   conda: CONDA_ENV
   shell:
     "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); mv $f $new; done ; "
     "{SPLITBAM} --in {input.input} --out '{params.noext}'; "
-    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); samtools index $new; done ; "
+    "for f in '{params.noext}'*bam; do mv $f ${{f}}.tmp; samtools sort -n -o ${{f}} ${{f}}.tmp; rm -f ${{f}}.tmp; done ; "
+
+def vcf_chr(wildcards):
+  vcf = [os.path.join(config['VCF_DIR'], config['VCF_PARENTAL'][config['GID']][wildcards.p])]
+  return [v.replace("_CHR_","_%s_" % wildcards.c) for v in vcf]
 
 rule iPCR_bam2bedpe:
   input:
-    os.path.join(iPCR_OUTDIR,"{s}","{s}_{c}.bam"),
-    os.path.join(iPCR_OUTDIR,"{s}","fastq1","{s}_forw.info")
+    bam=os.path.join("{path}","{smpl}","split_bam","{smpl}_{c}_{p,[pm]aternal}.bam"),
+    vcf = vcf_chr
   output:
-    os.path.join(iPCR_OUTDIR, "{s}", "{s}_{c}.bedpe.gz")
+    os.path.join("{path}", "{smpl}", "bedpe", "{smpl}_{c}_{p}.bedpe.gz")
   params:
-    dir=os.path.join(iPCR_OUTDIR,"{s}"),
-    basename="{s}"
+    patmat="{p}",
   conda: CONDA_ENV
   shell:
-    "{iPCR_bam2bedpe_script} -o '{params.dir}' -l -b '{params.basename}' {input}" 
+    "python {iPCR_bam2bedpe_script} -b {input.bam}  -v {input.vcf} -o {output} -p '{params.patmat}' ; "
 
 def iPCR_map_input(wildcards):
   if (ALLELE_SPECIFIC):
