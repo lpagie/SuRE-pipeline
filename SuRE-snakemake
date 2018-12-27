@@ -205,14 +205,15 @@ rule iPCR_assign_parent:
 
 rule iPCR_coordsort_bam:
   input:
-    "{f}.bam"
+    os.path.join("{path}","{smpl}","assigned","{smpl}_{p}.bam")
   output:
-    temp("{f}_coord-sort.bam"),
-    temp("{f}_coord-sort.bam.bai")
+    bam=temp(os.path.join("{path}","{smpl}","sort_after_assign","{smpl}_{p,[pm]aternal}.bam")),
+    bai=temp(os.path.join("{path}","{smpl}","sort_after_assign","{smpl}_{p,[pm]aternal}.bam.bai"))
   threads: 4
+  conda: CONDA_ENV
   shell:
-    "{SAMTOOLS} sort -o {output} -@ {threads} -m 20G  {input} -T {output} ; "
-    "{SAMTOOLS} index {output} ; "
+    "samtools sort -o {output.bam} -@ {threads} -m 20G -T {output.bam} {input} ; "
+    "samtools index {output.bam} ; "
 
 
 rule iPCR_templateBAM:
