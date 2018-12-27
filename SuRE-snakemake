@@ -112,6 +112,10 @@ rule all:
     "bed2coverage.done"
 #    "QA.done"
 
+rule assigned:
+  input:
+    expand(os.path.join(iPCR_OUTDIR, "{s}", "assigned", "{s}_{pat}.bam"), s=config["iPCR"]["SAMPLES"].keys(), pat=['paternal','maternal']) 
+
 rule QA:
   input:
     expand(os.path.join(iPCR_OUTDIR, "{s}", "iPCR_single_QA.{s}.done"), s=iPCR_SAMPLES.keys())
