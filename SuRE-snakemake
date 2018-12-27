@@ -226,9 +226,9 @@ rule iPCR_templateBAM:
 rule iPCR_splitBAM:
   input:
     input="{f}.bam",
-    template=expand("{{f}}_{c}_{{p}}aternal_template.bam",c=CHR_TARGET)
+    template=expand("{{f}}_{c}_{{p}}_template.bam",c=CHR_TARGET)
   output:
-    "{f}_{c}_{p,[pm]}aternal.bam"
+    "{f}_{c}_{p,[pm]aternal}.bam"
   params:
     noext="{f}_"
   conda: CONDA_ENV
