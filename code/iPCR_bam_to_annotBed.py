@@ -50,10 +50,10 @@ def parse_options():
     return options
 
 
-def import_VCF(options):
+def import_VCF(vcf_fname):
     # using try/except mostly as an exercise
     try:
-        vcf_reader = vcf.Reader(open(options.vcf, 'r'))
+        vcf_reader = vcf.Reader(open(vcf_fname, 'r'))
     except FileNotFoundError as fnf_error:
         print(fnf_error)
         sys.exit()
@@ -75,8 +75,8 @@ def import_VCF(options):
     return(tree)
 
 
-def open_bam(options):
-    bam = pysam.AlignmentFile(options.bam, "rb")
+def open_bam(bam_fname):
+    bam = pysam.AlignmentFile(bam_fname, "rb")
     # check whether bam is name sorted
     head = bam.head(100)
     c = 0
@@ -316,11 +316,11 @@ def main(options):
     # some checks on cell line, chromosome, paternal/maternal, bam is sorted on readname
     # get interface to reads in bamfiles
     print("opening bam file %s" % options.bam)
-    reads = open_bam(options)
+    reads = open_bam(options.bam)
     print("bam file opened")
     # import SNPs files, store in interval tree
     print("importing vcf file %s" % options.vcf)
-    vcf = import_VCF(options) # import_SNPs returns an IntervalTree
+    vcf = import_VCF(options.vcf) # import_SNPs returns an IntervalTree
     print("import of vcf done")
     # open output file
     print("opening bedpe file for output: %s" % options.out)
