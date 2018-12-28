@@ -70,8 +70,8 @@ def import_VCF(vcf_fname):
             _c = record.CHROM
         assert _c == record.CHROM
         # insert record in tree if it is an INDEL
-        if record.is_indel:
-            tree.insert_interval(Interval(record.start, record.end, record))
+        # if record.is_indel:
+        tree.insert_interval(Interval(record.start, record.end, record))
     return(tree)
 
 
@@ -142,16 +142,16 @@ def annotate_snp(snp, r1, r2, patmat):
 
     snp_ID = snp.ID
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
-    snp_base = []
-    snp_var = []
-    snp_patmat = []
+    # snp_base = []
+    # snp_var = []
+    # snp_patmat = []
     annot = []
 
     if snp.POS>r1.reference_end and snp.POS<=r2.reference_start:
         # snp in between r1 and r2
         try: 
-            snp_base = [iupac(snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='paternal'])], 
-                              snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])])]
+            snp_base = iupac(snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='paternal'])], 
+                             snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])])
         except NameError:
             print("error in annotate_snp_in_read with SNP %s" % snp)
             print(snp.alleles)
@@ -197,12 +197,12 @@ def annotate_indel(snp, r1, r2, patmat):
 
         return (snp_base, snp_var, snp_patmat)
 
-    snp_ID = snp.ID
+    snp_ID      = snp.ID
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
     snp_max_end = snp.start + max(len(allele) for allele in snp.alleles) 
-    snp_base = []
-    snp_var = []
-    snp_patmat = []
+    # snp_base = []
+    # snp_var = []
+    # snp_patmat = []
     annot = []
 
     if snp.start < r1.reference_start or snp_max_end > r2.reference_end:
@@ -263,7 +263,7 @@ def _stringify_fragment(r1, r2, snp_annot):
     # - rel_snp_pos (0-based), snp_base, abs_snp_pos (1-based), snp_var, snp_ind_in_vcf
     # - inf_base, inf_snp_var, SNP_ID, patmat
 
-    BC = ''
+    # BC = ''
     alt1 = str(r1.get_tag('XS') if 'XS' in [e[0] for e in r1.get_tags()] else '.')
     alt2 = str(r2.get_tag('XS') if 'XS' in [e[0] for e in r2.get_tags()] else '.')
     md1 = str(r1.get_tag('MD') if 'MD' in [e[0] for e in r1.get_tags()] else '.')
@@ -277,16 +277,16 @@ def _stringify_fragment(r1, r2, snp_annot):
         snp_var     = _stringify([a[1] for annot in snp_annot for a in annot[2]])
         snp_patmat  = _stringify([a[2] for annot in snp_annot for a in annot[2]])
     else:
-        snp_rel_pos = ""
-        snp_ID = ""
-        snp_base = ""
-        snp_var = ""
-        snp_patmat = ""
+        snp_rel_pos    = ""
+        snp_ID         = ""
+        snp_base       = ""
+        snp_var        = ""
+        snp_patmat     = ""
 
     try:
         fragment = '\t'.join([r1.query_name, r1.reference_name, str(r1.reference_start+1), str(r2.reference_end), # reference_start is 0-based
                           str(r2.reference_end-r1.reference_start), ('-' if r1.is_read2 else '+'), 
-                          BC, '1', str(r1.reference_end), str(r2.reference_start), 
+                          str(r1.reference_end), str(r2.reference_start), 
                           str(r1.mapping_quality), str(r2.mapping_quality), 
                           md1, md2, alt1, alt2, r1.query_sequence, r2.query_sequence, cigar1, cigar2, 
                           snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat])
