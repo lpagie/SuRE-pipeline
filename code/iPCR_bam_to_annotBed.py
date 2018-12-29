@@ -95,7 +95,7 @@ def open_bam(bam_fname):
 
 def open_output(options):
     out = gzip.open(options.out, 'wb')
-    header = "readID chrom start end length strand BC count iend istart MAPQ1 MAPQ2 MD1 MD2 XS1 XS2 SEQ1 SEQ2 CIGAR1 CIGAR2 SNP_REL_POS SNP_ID SNP_SEQ SNP_VAR SNP_PARENT SNP_TYPE SNP_SUBTYPE"
+    header = "readID chrom start end length strand iend istart MAPQ1 MAPQ2 MD1 MD2 XS1 XS2 SEQ1 SEQ2 CIGAR1 CIGAR2 SNP_REL_POS SNP_ID SNP_SEQ SNP_VAR SNP_PARENT SNP_TYPE SNP_SUBTYPE"
     # replace spaces in header string with tabs
     header = header.replace(" ", "\t")
     # add a newline to the headerline
@@ -280,8 +280,8 @@ def _stringify_fragment(r1, r2, snp_annot):
         snp_base    = _stringify([a[0] for annot in snp_annot for a in annot[2]])
         snp_var     = _stringify([a[1] for annot in snp_annot for a in annot[2]])
         snp_patmat  = _stringify([a[2] for annot in snp_annot for a in annot[2]])
-        snp_type    = _stringify([stype for annot in snp_annot for stype in [annot[2]]*len(annot[2])])
-        snp_subtype = _stringify([stype for annot in snp_annot for stype in [annot[3]]*len(annot[2])])
+        snp_type    = _stringify([stype for annot in snp_annot for stype in [annot[3]]*len(annot[2])])
+        snp_subtype = _stringify([stype for annot in snp_annot for stype in [annot[4]]*len(annot[2])])
     else:
         snp_rel_pos    = ""
         snp_ID         = ""
