@@ -95,7 +95,7 @@ def open_bam(bam_fname):
 
 def open_output(options):
     out = gzip.open(options.out, 'wb')
-    header = "readID chrom start end length strand BC count iend istart MAPQ1 MAPQ2 MD1 MD2 XS1 XS2 SEQ1 SEQ2 CIGAR1 CIGAR2 SNP_REL_POS SNP_ID SNP_SEQ SNP_VAR SNP_PARENT"
+    header = "readID chrom start end length strand BC count iend istart MAPQ1 MAPQ2 MD1 MD2 XS1 XS2 SEQ1 SEQ2 CIGAR1 CIGAR2 SNP_REL_POS SNP_ID SNP_SEQ SNP_VAR SNP_PARENT SNP_TYPE SNP_SUBTYPE"
     # replace spaces in header string with tabs
     header = header.replace(" ", "\t")
     # add a newline to the headerline
