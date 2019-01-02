@@ -114,7 +114,7 @@ rule all:
 
 rule assigned:
   input:
-    expand(os.path.join(iPCR_OUTDIR, "{s}", "assigned", "{s}_{pat}.bam"), s=config["iPCR"]["SAMPLES"].keys(), pat=['paternal','maternal']) 
+    expand(os.path.join(iPCR_OUTDIR, "{s}", "03_assigned", "{s}_{pat}.bam"), s=config["iPCR"]["SAMPLES"].keys(), pat=['paternal','maternal']) 
 
 rule QA:
   input:
@@ -152,11 +152,11 @@ rule iPCR_trim:
   input:
     lambda wildcards: [os.path.join(iPCR_FASTQ_DIR, f) for f in iPCR_SAMPLE2FILES[wildcards.s]]
   output:
-    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_forw.fastq.gz"),
-    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_rev.fastq.gz"),
-    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_forw.info")
+    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.fastq.gz"),
+    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_rev.fastq.gz"),
+    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.info")
   params:
-    dir=os.path.join(iPCR_OUTDIR,"{s}", "fastq_trimmed"),
+    dir=os.path.join(iPCR_OUTDIR,"{s}", "01_fastq_trimmed"),
     cutmotif=lambda wildcards: iPCR_SAMPLES[wildcards.s]["CUTMOTIF"],
     forwAdaptr=ADPTR_IPCR_FORW_SEQ,
     revAdaptr=ADPTR_IPCR_REV_SEQ,
@@ -168,12 +168,12 @@ rule iPCR_trim:
 
 rule iPCR_map_bowtie2_paired_end:
   input:
-    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_forw.fastq.gz"),
-    os.path.join(iPCR_OUTDIR,"{s}","fastq_trimmed","{s}_rev.fastq.gz")
+    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.fastq.gz"),
+    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_rev.fastq.gz")
   output:
-    os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_{p}.bam")
+    os.path.join(iPCR_OUTDIR,"{s}","02_mapped","{s}_{p}.bam")
   params:
-    dir=os.path.join(iPCR_OUTDIR,"{s}","mapped"),
+    dir=os.path.join(iPCR_OUTDIR,"{s}","02_mapped"),
     stats=os.path.join(iPCR_OUTDIR,"{s}","{s}_{p}.stats"),
     basename="{s}_{p}",
     refseq=lambda wildcards: os.path.join(config["BOWTIE2_INDEX_DIR"], config["BOWTIE2_PARENTAL"][config["GID"]][wildcards.p]),
@@ -189,15 +189,15 @@ rule iPCR_map_bowtie2_paired_end:
 
 rule iPCR_assign_parent:
   input:
-    paternal=os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_paternal.bam"),
-    maternal=os.path.join(iPCR_OUTDIR,"{s}","mapped","{s}_maternal.bam")
+    paternal=os.path.join(iPCR_OUTDIR,"{s}","02_mapped","{s}_paternal.bam"),
+    maternal=os.path.join(iPCR_OUTDIR,"{s}","02_mapped","{s}_maternal.bam")
   output:
-    temp(os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}_paternal.bam")),
-    temp(os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}_maternal.bam"))
+    temp(os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_paternal.bam")),
+    temp(os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_maternal.bam"))
   conda: CONDA_ENV
   params:
-    dir=os.path.join(iPCR_OUTDIR,"{s}","assigned"),
-    basename=os.path.join(iPCR_OUTDIR,"{s}","assigned","{s}")
+    dir=os.path.join(iPCR_OUTDIR,"{s}","03_assigned"),
+    basename=os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}")
   threads: 4
   shell:
     "mkdir -p '{params.dir}' ; "
@@ -205,10 +205,10 @@ rule iPCR_assign_parent:
 
 rule iPCR_coordsort_bam:
   input:
-    os.path.join("{path}","{smpl}","assigned","{smpl}_{p}.bam")
+    os.path.join("{path}","{smpl}","03_assigned","{smpl}_{p}.bam")
   output:
-    bam=temp(os.path.join("{path}","{smpl}","sort_after_assign","{smpl}_{p,[pm]aternal}.bam")),
-    bai=temp(os.path.join("{path}","{smpl}","sort_after_assign","{smpl}_{p,[pm]aternal}.bam.bai"))
+    bam=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{p,[pm]aternal}.bam")),
+    bai=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{p,[pm]aternal}.bam.bai"))
   threads: 4
   conda: CONDA_ENV
   shell:
@@ -227,12 +227,12 @@ rule iPCR_templateBAM:
 
 rule iPCR_splitBAM:
   input:
-    input=os.path.join("{path}","{smpl}","sort_after_assign","{s}_{p}.bam"),
-    template=expand(os.path.join("{{path}}","{{smpl}}","sort_after_assign","{{s}}_{c}_{{p}}_template.bam"),c=CHR_TARGET)
+    input=os.path.join("{path}","{smpl}","04_sort_after_assign","{s}_{p}.bam"),
+    template=expand(os.path.join("{{path}}","{{smpl}}","04_sort_after_assign","{{s}}_{c}_{{p}}_template.bam"),c=CHR_TARGET)
   output:
-    os.path.join("{path}","{smpl}","split_bam","{s}_{c}_{p}.bam")
+    os.path.join("{path}","{smpl}","05_split_bam","{s}_{c}_{p}.bam")
   params:
-    noext=os.path.join("{path}","{smpl}","split_bam","{s}_")
+    noext=os.path.join("{path}","{smpl}","05_split_bam","{s}_")
   conda: CONDA_ENV
   shell:
     "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); mv $f $new; done ; "
@@ -245,10 +245,10 @@ def vcf_chr(wildcards):
 
 rule iPCR_bam2bedpe:
   input:
-    bam=os.path.join("{path}","{smpl}","split_bam","{smpl}_{c}_{p,[pm]aternal}.bam"),
+    bam=os.path.join("{path}","{smpl}","05_split_bam","{smpl}_{c}_{p,[pm]aternal}.bam"),
     vcf = vcf_chr
   output:
-    os.path.join("{path}", "{smpl}", "bedpe", "{smpl}_{c}_{p}.bedpe.gz")
+    os.path.join("{path}", "{smpl}", "06_bedpe", "{smpl}_{c}_{p}.bedpe.gz")
   params:
     patmat="{p}",
   conda: CONDA_ENV
