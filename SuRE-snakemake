@@ -114,7 +114,18 @@ rule all:
 
 rule assigned:
   input:
-    expand(os.path.join(iPCR_OUTDIR, "{s}", "03_assigned", "{s}_{pat}.bam"), s=config["iPCR"]["SAMPLES"].keys(), pat=['paternal','maternal']) 
+    expand(os.path.join(iPCR_OUTDIR, "{s}", "03_assigned", "{s}_{pat}.bam"), s=config["iPCR"]["SAMPLES"].keys(), pat=['paternal','maternal','equal','ambiguous']) 
+
+rule bedpe:
+  input:
+    expand(os.path.join(iPCR_OUTDIR, "{s}", "06_bedpe", "{ass}","{s}_{c}.bedpe.gz"), 
+           s=config["iPCR"]["SAMPLES"].keys(), 
+           c=config["CHR_TARGET"],
+           ass=['paternal','maternal','equal','ambiguous']) 
+  run:
+    print(input)
+    # os.path.join("{path}", "{smpl}", "06_bedpe", "{ass}", "{smpl}_{c}.bedpe.gz")
+
 
 rule QA:
   input:
@@ -192,8 +203,14 @@ rule iPCR_assign_parent:
     paternal=os.path.join(iPCR_OUTDIR,"{s}","02_mapped","{s}_paternal.bam"),
     maternal=os.path.join(iPCR_OUTDIR,"{s}","02_mapped","{s}_maternal.bam")
   output:
-    temp(os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_paternal.bam")),
-    temp(os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_maternal.bam"))
+    # temp(os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_paternal.bam")),
+    # temp(os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_maternal.bam")),
+    # temp(os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_equal.bam")),
+    # temp(os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_ambiguous.bam"))
+    os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_paternal.bam"),
+    os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_maternal.bam"),
+    os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_equal.bam"),
+    os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}_ambiguous.bam")
   conda: CONDA_ENV
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}","03_assigned"),
@@ -207,8 +224,8 @@ rule iPCR_coordsort_bam:
   input:
     os.path.join("{path}","{smpl}","03_assigned","{smpl}_{p}.bam")
   output:
-    bam=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{p,[pm]aternal}.bam")),
-    bai=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{p,[pm]aternal}.bam.bai"))
+    bam=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{p,(paternal)|(maternal)|(equal)|(ambiguous)}.bam")),
+    bai=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{p,(paternal)|(maternal)|(equal)|(ambiguous)}.bam.bai"))
   threads: 4
   conda: CONDA_ENV
   shell:
@@ -218,39 +235,45 @@ rule iPCR_coordsort_bam:
 
 rule iPCR_templateBAM:
   input:
-    os.path.join("{path}","{f}_{p}.bam")
+    # os.path.join("{path}","04_sort_after_assign","{f}_{ass}.bam")
+    input=os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{ass}.bam"),
   output:
-    os.path.join("{path}","{f}_{c}_{p,[mp]aternal}_template.bam")
+    # os.path.join("{path}","05_split_bam","{ass}","{f}_{c}_template.bam")
+    template=os.path.join("{path}","{smpl}","05_split_bam","{ass}","{smpl}_{chr}_template.bam")
   conda: CONDA_ENV
   shell:
     "samtools view -H -b {input} -o {output}"
 
 rule iPCR_splitBAM:
   input:
-    input=os.path.join("{path}","{smpl}","04_sort_after_assign","{s}_{p}.bam"),
-    template=expand(os.path.join("{{path}}","{{smpl}}","04_sort_after_assign","{{s}}_{c}_{{p}}_template.bam"),c=CHR_TARGET)
+    input=os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{ass}.bam"),
+    # template=os.path.join("{path}","{smpl}","05_split_bam","{ass}","{smpl}_{chr}_template.bam")
+    template=expand(os.path.join("{{path}}","{{smpl}}","05_split_bam","{{ass}}","{{smpl}}_{chr}_template.bam"), chr=config["CHR_TARGET"])
   output:
-    os.path.join("{path}","{smpl}","05_split_bam","{s}_{c}_{p}.bam")
+    expand(os.path.join("{{path}}","{{smpl}}","05_split_bam","{{ass}}","{{smpl}}_{chr}.bam"), chr=config["CHR_TARGET"])
   params:
-    noext=os.path.join("{path}","{smpl}","05_split_bam","{s}_")
+    noext=os.path.join("{path}","{smpl}","05_split_bam","{ass}","{smpl}_")
   conda: CONDA_ENV
   shell:
-    "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); mv $f $new; done ; "
+    # "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); mv $f $new; done ; "
+    "rename -f -e 's/_template//' {input.template} ; "
     "{SPLITBAM} --in {input.input} --out '{params.noext}'; "
+    "rename -f -e 's/_[pm]aternal//' '{params.noext}'*bam ; "
     "for f in '{params.noext}'*bam; do mv $f ${{f}}.tmp; samtools sort -n -o ${{f}} ${{f}}.tmp; rm -f ${{f}}.tmp; done ; "
 
 def vcf_chr(wildcards):
-  vcf = [os.path.join(config['VCF_DIR'], config['VCF_PARENTAL'][config['GID']][wildcards.p])]
+  ass = "maternal" if wildcards.ass == "maternal" else "paternal"
+  vcf = [os.path.join(config['VCF_DIR'], config['VCF_PARENTAL'][config['GID']][ass])]
   return [v.replace("_CHR_","_%s_" % wildcards.c) for v in vcf]
 
 rule iPCR_bam2bedpe:
   input:
-    bam=os.path.join("{path}","{smpl}","05_split_bam","{smpl}_{c}_{p,[pm]aternal}.bam"),
+    bam=os.path.join("{path}","{smpl}","05_split_bam","{ass}","{smpl}_{c}.bam"),
     vcf = vcf_chr
   output:
-    os.path.join("{path}", "{smpl}", "06_bedpe", "{smpl}_{c}_{p}.bedpe.gz")
+    os.path.join("{path}", "{smpl}", "06_bedpe", "{ass}", "{smpl}_{c}.bedpe.gz")
   params:
-    patmat="{p}",
+    patmat="maternal" if "{ass}" == "maternal" else "paternal",
   conda: CONDA_ENV
   shell:
     "python {iPCR_bam2bedpe_script} -b {input.bam}  -v {input.vcf} -o {output} -p '{params.patmat}' ; "
