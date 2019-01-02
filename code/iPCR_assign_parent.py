@@ -62,7 +62,9 @@ def import_bam(options):
 
 def export_bam(options, input_bams):
     bams = {'paternal':pysam.AlignmentFile(options.basename+'_paternal.bam', 'wb', template=input_bams['paternal']),
-            'maternal':pysam.AlignmentFile(options.basename+'_maternal.bam', 'wb',input_bams['maternal'])}
+            'maternal':pysam.AlignmentFile(options.basename+'_maternal.bam', 'wb',input_bams['maternal']),
+            'equal':pysam.AlignmentFile(options.basename+'_equal.bam', 'wb',input_bams['paternal']),
+            'ambiguous':pysam.AlignmentFile(options.basename+'_ambiguous.bam', 'wb',input_bams['paternal'])}
     return(bams)
 
 def classify_parent(rpf,rmf,rpr,rmr):
@@ -133,7 +135,8 @@ def classify_reads(ibam, obam):
     for rpf, rmf in reads:
         rpr, rmr = next(reads)
         read_class,read = classify_parent(rpf,rmf,rpr,rmr)
-        if (read_class=='paternal' or read_class=='maternal'):
+        if (read_class in ['paternal', 'maternal', 'equal', 'ambiguous']):
+            # if (read_class=='paternal' or read_class=='maternal'):
             obam[read_class].write(read['forw'])
             obam[read_class].write(read['rev'])
 
