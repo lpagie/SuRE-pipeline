@@ -121,8 +121,16 @@ def _stringify(iterable, sep=','):
 def annotate_snp(snp, r1, r2, patmat):
     def annotate_snp_in_read(r):
         # overlap with read 'r'
-        rel_pos = snp.start - r.reference_start # both coord systems are 0-based
-        snp_base = r.query_sequence[rel_pos] # retrieve observed base
+        try:
+        # check if genomic position is covered by read and not deleted in read
+            rel_pos = r.query_sequence.index(str(snp.start))
+        except ValueError:
+            snp_base = None
+            snp_var = -2
+            snp_patmat = 'pos deleted in read'
+            return (snp_base, snp_var, snp_patmat)
+
+        snp_base = r.query_sequence[rel_pos]
         try:
             # check if observed base is either reference or alternative (1, 2, etc)
             snp_var = snp.alleles.index(snp_base) # 0: reference, 1..: 1st (2nd, 3rd, etc) allele
