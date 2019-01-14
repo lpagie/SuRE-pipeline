@@ -178,6 +178,10 @@ rule iPCR_trim:
     "gzip '{params.dir}'/*fastq"
 
 rule iPCR_map_bowtie2_paired_end:
+  # map PE reads in 2 fastq files to either paternal or maternal genome
+  # input: 2 fastq files with PE read pairs
+  # output: single bam file with alignments for *all* reads, sorted long readID
+  # note: bowtie2 index file selected based on config, genomeID, and parent
   input:
     os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.fastq.gz"),
     os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_rev.fastq.gz")
@@ -199,6 +203,12 @@ rule iPCR_map_bowtie2_paired_end:
     "{iPCR_mapOnly_script} -o '{params.dir}' -l -n {threads} -t $PWD/'{params.stats}' -b '{params.basename}' -m '{params.maxInsert}' -s '{params.refseq}' -c {input}"
 
 rule iPCR_assign_parent:
+  # assign each PE read pair, aligned on paternal and maternal genome, to
+  # either paternal, maternal, equal, or ambiguous
+  # input: 2 bam files; each containing all read pairs mapped to either
+  # paternal and maternal genome
+  # output: 4 bam files, with each PE read pair occuring in at most one, some
+  # read pairs are discarded all together
   input:
     paternal=os.path.join(iPCR_OUTDIR,"{s}","02_mapped","{s}_paternal.bam"),
     maternal=os.path.join(iPCR_OUTDIR,"{s}","02_mapped","{s}_maternal.bam")
@@ -220,12 +230,16 @@ rule iPCR_assign_parent:
     "mkdir -p '{params.dir}' ; "
     "python {ASSIGN_PARENT_SCRIPT} --bp {input.paternal} --bm {input.maternal} --basename '{params.basename}' ; "
 
+
 rule iPCR_coordsort_bam:
+  # Sort input bam files along genomic coordinates
+  # input: bam files after assignment to paternal/maternal/equal/ambiguous
+  # output: bam files for splitting along chromosome
   input:
-    os.path.join("{path}","{smpl}","03_assigned","{smpl}_{p}.bam")
+    os.path.join("{path}","{smpl}","03_assigned","{smpl}_{assign}.bam")
   output:
-    bam=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{p,(paternal)|(maternal)|(equal)|(ambiguous)}.bam")),
-    bai=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{p,(paternal)|(maternal)|(equal)|(ambiguous)}.bam.bai"))
+    bam=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam")),
+    bai=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam.bai"))
   threads: 4
   conda: CONDA_ENV
   shell:
@@ -234,20 +248,35 @@ rule iPCR_coordsort_bam:
 
 
 rule iPCR_templateBAM:
+  # generate empty bam files for each chromosome, containing only the
+  # appropriate header info
+  # input: corresponding bam file containing alignments for whole-genome
+  # output: bam files containing only header for all chromosomes
   input:
-    # os.path.join("{path}","04_sort_after_assign","{f}_{ass}.bam")
-    input=os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{ass}.bam"),
+    input=os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam"),
   output:
-    # os.path.join("{path}","05_split_bam","{ass}","{f}_{c}_template.bam")
-    template=os.path.join("{path}","{smpl}","05_split_bam","{ass}","{smpl}_{chr}_template.bam")
+    template=os.path.join("{path}","{smpl}","05_split_bam","{assign}","{smpl}_{chr}_template.bam")
   conda: CONDA_ENV
   shell:
     "samtools view -H -b {input} -o {output}"
 
 rule iPCR_splitBAM:
+  # split input bam file along chromosome; this enables further paralellisation
+  # down stream.
+  # INPUT: whole-genome bam file, plus bam file "templates" for all chromosomes
+  # which only contain header info. The latter bam files are generated to catch
+  # cases that a chromsome doesn't contain any data, in which case an 'empty'
+  # bam file already exists.
+  # OUTPUT: bam files for all chromosomesi, sorted along readID.
+  # NOTE: the chromosomes are names 'number_parent', eg. 04_paternal,
+  # 12_maternal. Data is already assigned to different classes; paternal,
+  # maternal, equal, ambiguous. All alignments, except for the
+  # maternal-assigned alignments, are aligned to paternal genome. In this rule
+  # the parental extension of the chromosome name is removed from the bam
+  # filename. The chromosome names used in the bam file still contain the
+  # parental extension. 
   input:
     input=os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{ass}.bam"),
-    # template=os.path.join("{path}","{smpl}","05_split_bam","{ass}","{smpl}_{chr}_template.bam")
     template=expand(os.path.join("{{path}}","{{smpl}}","05_split_bam","{{ass}}","{{smpl}}_{chr}_template.bam"), chr=config["CHR_TARGET"])
   output:
     expand(os.path.join("{{path}}","{{smpl}}","05_split_bam","{{ass}}","{{smpl}}_{chr}.bam"), chr=config["CHR_TARGET"])
@@ -255,7 +284,6 @@ rule iPCR_splitBAM:
     noext=os.path.join("{path}","{smpl}","05_split_bam","{ass}","{smpl}_")
   conda: CONDA_ENV
   shell:
-    # "for f in {input.template}; do new=$( echo $f | sed 's/_template//' ); mv $f $new; done ; "
     "rename -f -e 's/_template//' {input.template} ; "
     "{SPLITBAM} --in {input.input} --out '{params.noext}'; "
     "rename -f -e 's/_[pm]aternal//' '{params.noext}'*bam ; "
@@ -267,6 +295,10 @@ def vcf_chr(wildcards):
   return [v.replace("_CHR_","_%s_" % wildcards.c) for v in vcf]
 
 rule iPCR_bam2bedpe:
+  # reformat aligned read pairs to bedpe-like data, assign SNP-annotation to each bedpe-fragment
+  # INPUT: bam file, vcf file, determined using above input function (note that
+  # all bam files, except the maternal  one, are aligned along paternal genome)
+  # OUTPUT: compressed bedpe-like file
   input:
     bam=os.path.join("{path}","{smpl}","05_split_bam","{ass}","{smpl}_{c}.bam"),
     vcf = vcf_chr
