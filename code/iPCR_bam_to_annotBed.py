@@ -169,7 +169,7 @@ def annotate_snp(snp, r1, r2, patmat):
         annot = [(snp_base, snp_var, snp_patmat)]
     else:
         # snp overlaps with either one or both reads
-        if snp.POS<=r1.reference_end:
+        if snp.POS<r1.reference_end:
             annot.append(annotate_snp_in_read(r1))
         if snp.POS > r2.reference_start:
             annot.append(annotate_snp_in_read(r2))
@@ -225,10 +225,10 @@ def annotate_indel(snp, r1, r2, patmat):
         annot = [(snp_base, snp_var, snp_patmat)]
         return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype)
     else:
-        if snp_max_end <= r1.reference_end:
+        if snp_max_end < r1.reference_end:
             # snp overlaps completely with read1
             annot.append(annotate_indel_in_read(r1))
-        if snp.start >= r2.reference_start:
+        if snp.start > r2.reference_start:
             # snp overlaps completely with read2
             annot.append(annotate_indel_in_read(r2))
     return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype)
@@ -236,7 +236,7 @@ def annotate_indel(snp, r1, r2, patmat):
 def annotate_fragment(r1, r2, vcf, patmat):
     # find overlapping SNPs
     # sam coordinates are 0-based
-    snps = vcf.find(r1.reference_start, r2.reference_end) # reference_end gives "one past the last aligned residue" but is also 0-based (pysam manual)
+    snps = vcf.find(r1.reference_start, r2.reference_end-1) # reference_end gives "one past the last aligned residue" but is also 0-based (pysam manual). Nevertheless I found I need the 'end-1' anyway, not to include SNPs beyond the end of the alignment
     snp_annot = []
     # check SNP base/sequence identity
     if len(snps) is 0:
