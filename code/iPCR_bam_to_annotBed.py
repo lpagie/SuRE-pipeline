@@ -152,9 +152,6 @@ def annotate_snp(snp, r1, r2, patmat):
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
     snp_type    = snp.var_type
     snp_subtype = snp.var_subtype
-    # snp_base = []
-    # snp_var = []
-    # snp_patmat = []
     annot = []
 
     if snp.POS>r1.reference_end and snp.POS<=r2.reference_start:
@@ -212,9 +209,6 @@ def annotate_indel(snp, r1, r2, patmat):
     snp_max_end = snp.start + max(len(allele) for allele in snp.alleles) 
     snp_type    = snp.var_type
     snp_subtype = snp.var_subtype
-    # snp_base = []
-    # snp_var = []
-    # snp_patmat = []
     annot = []
 
     if snp.start < r1.reference_start or snp_max_end > r2.reference_end:
