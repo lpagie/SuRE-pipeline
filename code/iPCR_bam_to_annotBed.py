@@ -50,10 +50,10 @@ def parse_options():
     return options
 
 
-def import_VCF(options):
+def import_VCF(vcf_fname):
     # using try/except mostly as an exercise
     try:
-        vcf_reader = vcf.Reader(open(options.vcf, 'r'))
+        vcf_reader = vcf.Reader(open(vcf_fname, 'r'))
     except FileNotFoundError as fnf_error:
         print(fnf_error)
         sys.exit()
@@ -70,13 +70,13 @@ def import_VCF(options):
             _c = record.CHROM
         assert _c == record.CHROM
         # insert record in tree if it is an INDEL
-        if record.is_indel:
-            tree.insert_interval(Interval(record.start, record.end, record))
+        # if record.is_indel:
+        tree.insert_interval(Interval(record.start, record.end, record))
     return(tree)
 
 
-def open_bam(options):
-    bam = pysam.AlignmentFile(options.bam, "rb")
+def open_bam(bam_fname):
+    bam = pysam.AlignmentFile(bam_fname, "rb")
     # check whether bam is name sorted
     head = bam.head(100)
     c = 0
@@ -95,7 +95,7 @@ def open_bam(options):
 
 def open_output(options):
     out = gzip.open(options.out, 'wb')
-    header = "readID chrom start end length strand BC count iend istart MAPQ1 MAPQ2 MD1 MD2 XS1 XS2 SEQ1 SEQ2 CIGAR1 CIGAR2 SNP_REL_POS SNP_ID SNP_SEQ SNP_VAR SNP_PARENT"
+    header = "readID chrom start end length strand iend istart MAPQ1 MAPQ2 MD1 MD2 XS1 XS2 SEQ1 SEQ2 CIGAR1 CIGAR2 SNP_REL_POS SNP_ID SNP_SEQ SNP_VAR SNP_PARENT SNP_TYPE SNP_SUBTYPE"
     # replace spaces in header string with tabs
     header = header.replace(" ", "\t")
     # add a newline to the headerline
@@ -142,16 +142,18 @@ def annotate_snp(snp, r1, r2, patmat):
 
     snp_ID = snp.ID
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
-    snp_base = []
-    snp_var = []
-    snp_patmat = []
+    snp_type    = snp.var_type
+    snp_subtype = snp.var_subtype
+    # snp_base = []
+    # snp_var = []
+    # snp_patmat = []
     annot = []
 
     if snp.POS>r1.reference_end and snp.POS<=r2.reference_start:
         # snp in between r1 and r2
         try: 
-            snp_base = [iupac(snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='paternal'])], 
-                              snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])])]
+            snp_base = iupac(snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='paternal'])], 
+                             snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])])
         except NameError:
             print("error in annotate_snp_in_read with SNP %s" % snp)
             print(snp.alleles)
@@ -167,7 +169,7 @@ def annotate_snp(snp, r1, r2, patmat):
         if snp.POS > r2.reference_start:
             annot.append(annotate_snp_in_read(r2))
 
-    return (snp_rel_pos, snp_ID, annot)
+    return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype)
 
 
 def annotate_indel(snp, r1, r2, patmat):
@@ -197,12 +199,14 @@ def annotate_indel(snp, r1, r2, patmat):
 
         return (snp_base, snp_var, snp_patmat)
 
-    snp_ID = snp.ID
+    snp_ID      = snp.ID
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
     snp_max_end = snp.start + max(len(allele) for allele in snp.alleles) 
-    snp_base = []
-    snp_var = []
-    snp_patmat = []
+    snp_type    = snp.var_type
+    snp_subtype = snp.var_subtype
+    # snp_base = []
+    # snp_var = []
+    # snp_patmat = []
     annot = []
 
     if snp.start < r1.reference_start or snp_max_end > r2.reference_end:
@@ -217,7 +221,7 @@ def annotate_indel(snp, r1, r2, patmat):
         snp_var = -2 # base is not fully covered by either of the two reads
         snp_patmat = "unread"
         annot = [(snp_base, snp_var, snp_patmat)]
-        return (snp_rel_pos, snp_ID, annot)
+        return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype)
     else:
         if snp_max_end <= r1.reference_end:
             # snp overlaps completely with read1
@@ -225,7 +229,7 @@ def annotate_indel(snp, r1, r2, patmat):
         if snp.start >= r2.reference_start:
             # snp overlaps completely with read2
             annot.append(annotate_indel_in_read(r2))
-    return (snp_rel_pos, snp_ID, annot)
+    return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype)
 
 def annotate_fragment(r1, r2, vcf, patmat):
     # find overlapping SNPs
@@ -263,7 +267,7 @@ def _stringify_fragment(r1, r2, snp_annot):
     # - rel_snp_pos (0-based), snp_base, abs_snp_pos (1-based), snp_var, snp_ind_in_vcf
     # - inf_base, inf_snp_var, SNP_ID, patmat
 
-    BC = ''
+    # BC = ''
     alt1 = str(r1.get_tag('XS') if 'XS' in [e[0] for e in r1.get_tags()] else '.')
     alt2 = str(r2.get_tag('XS') if 'XS' in [e[0] for e in r2.get_tags()] else '.')
     md1 = str(r1.get_tag('MD') if 'MD' in [e[0] for e in r1.get_tags()] else '.')
@@ -276,20 +280,24 @@ def _stringify_fragment(r1, r2, snp_annot):
         snp_base    = _stringify([a[0] for annot in snp_annot for a in annot[2]])
         snp_var     = _stringify([a[1] for annot in snp_annot for a in annot[2]])
         snp_patmat  = _stringify([a[2] for annot in snp_annot for a in annot[2]])
+        snp_type    = _stringify([stype for annot in snp_annot for stype in [annot[3]]*len(annot[2])])
+        snp_subtype = _stringify([stype for annot in snp_annot for stype in [annot[4]]*len(annot[2])])
     else:
-        snp_rel_pos = ""
-        snp_ID = ""
-        snp_base = ""
-        snp_var = ""
-        snp_patmat = ""
+        snp_rel_pos    = ""
+        snp_ID         = ""
+        snp_base       = ""
+        snp_var        = ""
+        snp_patmat     = ""
+        snp_type       = ""
+        snp_subtype    = ""
 
     try:
         fragment = '\t'.join([r1.query_name, r1.reference_name, str(r1.reference_start+1), str(r2.reference_end), # reference_start is 0-based
                           str(r2.reference_end-r1.reference_start), ('-' if r1.is_read2 else '+'), 
-                          BC, '1', str(r1.reference_end), str(r2.reference_start), 
+                          str(r1.reference_end), str(r2.reference_start), 
                           str(r1.mapping_quality), str(r2.mapping_quality), 
                           md1, md2, alt1, alt2, r1.query_sequence, r2.query_sequence, cigar1, cigar2, 
-                          snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat])
+                          snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat, snp_type, snp_subtype])
     except TypeError:
         print(md1)
         print(md2)
@@ -299,7 +307,7 @@ def _stringify_fragment(r1, r2, snp_annot):
                                              BC, '1', str(r1.reference_end), str(r2.reference_start), 
                                              str(r1.mapping_quality), str(r2.mapping_quality), 
                                              md1, md2, alt1, alt2, cigar1, cigar2, 
-                                             snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat]:
+                                             snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat, snp_type, snp_subtype]:
             print(type(e))
         print("failing fragment with readID %s" % r1.query_name)
         return
@@ -316,11 +324,11 @@ def main(options):
     # some checks on cell line, chromosome, paternal/maternal, bam is sorted on readname
     # get interface to reads in bamfiles
     print("opening bam file %s" % options.bam)
-    reads = open_bam(options)
+    reads = open_bam(options.bam)
     print("bam file opened")
     # import SNPs files, store in interval tree
     print("importing vcf file %s" % options.vcf)
-    vcf = import_VCF(options) # import_SNPs returns an IntervalTree
+    vcf = import_VCF(options.vcf) # import_SNPs returns an IntervalTree
     print("import of vcf done")
     # open output file
     print("opening bedpe file for output: %s" % options.out)

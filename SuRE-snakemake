@@ -122,10 +122,6 @@ rule bedpe:
            s=config["iPCR"]["SAMPLES"].keys(), 
            c=config["CHR_TARGET"],
            ass=['paternal','maternal','equal','ambiguous']) 
-  run:
-    print(input)
-    # os.path.join("{path}", "{smpl}", "06_bedpe", "{ass}", "{smpl}_{c}.bedpe.gz")
-
 
 rule QA:
   input:
