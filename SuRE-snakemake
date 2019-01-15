@@ -124,6 +124,13 @@ rule bedpe:
            c=config["CHR_TARGET"],
            ass=['paternal','maternal','equal','ambiguous']) 
 
+rule bedpe_BC:
+  input:
+    expand(os.path.join(iPCR_OUTDIR, "{s}", "07_bedpe_BC", "{ass}","{s}_{c}.bedpe.gz"), 
+           s=config["iPCR"]["SAMPLES"].keys(), 
+           c=config["CHR_TARGET"],
+           ass=['paternal','maternal','equal','ambiguous']) 
+
 rule QA:
   input:
     expand(os.path.join(iPCR_OUTDIR, "{s}", "iPCR_single_QA.{s}.done"), s=iPCR_SAMPLES.keys())
