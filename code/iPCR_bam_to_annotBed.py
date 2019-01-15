@@ -270,12 +270,12 @@ def _stringify_fragment(r1, r2, snp_annot):
     # - inf_base, inf_snp_var, SNP_ID, patmat
 
     # BC = ''
-    alt1 = str(r1.get_tag('XS') if 'XS' in [e[0] for e in r1.get_tags()] else '.')
-    alt2 = str(r2.get_tag('XS') if 'XS' in [e[0] for e in r2.get_tags()] else '.')
-    md1 = str(r1.get_tag('MD') if 'MD' in [e[0] for e in r1.get_tags()] else '.')
-    md2 = str(r2.get_tag('MD') if 'MD' in [e[0] for e in r2.get_tags()] else '.')
-    cigar1 = r1.cigarstring or '.'
-    cigar2 = r2.cigarstring or '.'
+    alt1 = str(r1.get_tag('XS') if 'XS' in [e[0] for e in r1.get_tags()] else '')
+    alt2 = str(r2.get_tag('XS') if 'XS' in [e[0] for e in r2.get_tags()] else '')
+    md1 = str(r1.get_tag('MD') if 'MD' in [e[0] for e in r1.get_tags()] else '')
+    md2 = str(r2.get_tag('MD') if 'MD' in [e[0] for e in r2.get_tags()] else '')
+    cigar1 = r1.cigarstring or ''
+    cigar2 = r2.cigarstring or ''
     if None is not snp_annot:
         snp_rel_pos = _stringify([pos  for annot in snp_annot for pos in [annot[0]]*len(annot[2])])
         snp_ID      = _stringify([ID   for annot in snp_annot for ID  in [annot[1]]*len(annot[2])])
@@ -306,7 +306,7 @@ def _stringify_fragment(r1, r2, snp_annot):
         print(type(md1))
         for e in [r1.query_name, r1.reference_name, str(r1.reference_start+1), str(r2.reference_end), # reference_start is 0-based
                                              str(r2.reference_end-r1.reference_start), ('-' if r1.is_reverse else '+'), 
-                                             BC, '1', str(r1.reference_end), str(r2.reference_start), 
+                                             str(r1.reference_end), str(r2.reference_start), 
                                              str(r1.mapping_quality), str(r2.mapping_quality), 
                                              md1, md2, alt1, alt2, cigar1, cigar2, 
                                              snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat, snp_type, snp_subtype]:
