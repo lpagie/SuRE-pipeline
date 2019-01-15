@@ -47,6 +47,7 @@ iPCR_mapOnly_script     = os.path.join(CODE_BASE, "iPCR-map.bash")
 iPCR_bam2bedpe_script   = os.path.join(CODE_BASE, "iPCR_bam_to_annotBed.py")
 iPCR_single_QA_script   = os.path.join(CODE_BASE, "iPCR-single-QA.bash")
 iPCR_merge_script       = os.path.join(CODE_BASE, "iPCR-merge-bedpe-Filter-BC-multi-pos.bash")
+iPCR_addBC2bedpe        = os.path.join(CODE_BASE, "iPCR_addBC2bedpe.py")
 split_bedpe_script      = os.path.join(CODE_BASE, "split-bedpe2chr.sh")
 merge_all_script        = os.path.join(CODE_BASE, "merge-iPCR-cDNA-plDNA.bash")
 add_homozygous_baseIdentities_script = os.path.join(CODE_BASE, "add-homozygous-baseIndentities.bash")
@@ -119,6 +120,13 @@ rule assigned:
 rule bedpe:
   input:
     expand(os.path.join(iPCR_OUTDIR, "{s}", "06_bedpe", "{ass}","{s}_{c}.bedpe.gz"), 
+           s=config["iPCR"]["SAMPLES"].keys(), 
+           c=config["CHR_TARGET"],
+           ass=['paternal','maternal','equal','ambiguous']) 
+
+rule bedpe_BC:
+  input:
+    expand(os.path.join(iPCR_OUTDIR, "{s}", "07_bedpe_BC", "{ass}","{s}_{c}.bedpe.gz"), 
            s=config["iPCR"]["SAMPLES"].keys(), 
            c=config["CHR_TARGET"],
            ass=['paternal','maternal','equal','ambiguous']) 
@@ -305,6 +313,23 @@ rule iPCR_bam2bedpe:
   conda: CONDA_ENV
   shell:
     "python {iPCR_bam2bedpe_script} -b {input.bam}  -v {input.vcf} -o {output} -p '{params.patmat}' ; "
+
+rule addBC2bedpe:
+  # associate barcode sequence (from info file generated dusing fastq trimming)
+  # to SuRE fragments (from bedpe file) via readID in both files.
+  # INPUT: bedpe file from rule iPCR_bam2bedpe, info file from rule iPCR_trim
+  # OUTPUT: compressed bedpe-like file
+  input:
+    bedpe    = os.path.join("{path}", "{smpl}", "06_bedpe", "{ass}", "{smpl}_{c}.bedpe.gz"),
+    info     = os.path.join(iPCR_OUTDIR,"{smpl}","01_fastq_trimmed","{smpl}_forw.info")
+  output:
+    bedpe_BC = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.bedpe.gz"),
+    log      = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.log"),
+    stats    = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.stats"),
+  conda: CONDA_ENV
+  shell:
+    "python {iPCR_addBC2bedpe} --bedpe {input.bedpe} --info {input.info} --out {output.bedpe_BC} --log {output.log} --stats {output.stats}"
+
 
 def iPCR_map_input(wildcards):
   if (ALLELE_SPECIFIC):
