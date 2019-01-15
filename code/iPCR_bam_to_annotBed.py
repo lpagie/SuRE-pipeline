@@ -123,7 +123,7 @@ def annotate_snp(snp, r1, r2, patmat):
         # overlap with read 'r'
         try:
         # check if genomic position is covered by read and not deleted in read
-            rel_pos = r.query_sequence.index(str(snp.start))
+            rel_pos = r.get_reference_positions().index(snp.start)
         except ValueError:
             snp_base = None
             snp_var = -2
