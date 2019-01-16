@@ -102,7 +102,7 @@ def addBC2bedpe(bedpe, barcodes, log, stats):
     return (bedpe_merged)
 
 def write_merged_bedpe(bedpe, bedpe_fname, log, stats):
-    bedpe.to_csv(bedpe_fname, index=None, sep="\t", encoding="utf-8",mode="wt")
+    bedpe.to_csv(bedpe_fname, index=None, sep="\t", compression='gzip', header=True)
     return
 
 def main(options):
