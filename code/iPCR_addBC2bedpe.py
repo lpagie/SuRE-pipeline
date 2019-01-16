@@ -96,7 +96,9 @@ def import_barcodes(info_fname, log, stats):
 
 def addBC2bedpe(bedpe, barcodes, log, stats):
     bedpe_merged = pandas.merge(barcodes, bedpe)
-    stats.write("%d readIDs (of %d, %.2f%%) found in info file\n" % (len(bedpe_merged.index), len(bedpe.index), len(bedpe_merged.index)/len(bedpe.index)*100.0))
+    stats.write("%d readIDs (of %d, %.2f%%) found in info file\n" % (len(bedpe_merged.index), 
+                                                                     len(bedpe.index), 
+                                                                     len(bedpe_merged.index)/len(bedpe.index)*100.0 if len(bedpe.index)>0 else float('NaN')))
     return (bedpe_merged)
 
 def write_merged_bedpe(bedpe, bedpe_fname, log, stats):
