@@ -169,7 +169,7 @@ rule iPCR_trim:
   output:
     os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.fastq.gz"),
     os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_rev.fastq.gz"),
-    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.info")
+    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.info.gz")
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}", "01_fastq_trimmed"),
     cutmotif=lambda wildcards: iPCR_SAMPLES[wildcards.s]["CUTMOTIF"],
@@ -179,7 +179,7 @@ rule iPCR_trim:
   conda: CONDA_ENV
   shell:
     "{iPCR_trim_script} -o '{params.dir}' -l -d '{params.cutmotif}' -b '{params.basename}' -f '{params.forwAdaptr}' -r '{params.revAdaptr}' -c {input}; "
-    "gzip '{params.dir}'/*fastq"
+    "parallel gzip ::: '{params.dir}'/*fastq '{params.dir}'/*info"
 
 rule iPCR_map_bowtie2_paired_end:
   # map PE reads in 2 fastq files to either paternal or maternal genome
@@ -323,7 +323,7 @@ rule addBC2bedpe:
   # OUTPUT: compressed bedpe-like file
   input:
     bedpe    = os.path.join("{path}", "{smpl}", "06_bedpe", "{ass}", "{smpl}_{c}.bedpe.gz"),
-    info     = os.path.join(iPCR_OUTDIR,"{smpl}","01_fastq_trimmed","{smpl}_forw.info")
+    info     = os.path.join(iPCR_OUTDIR,"{smpl}","01_fastq_trimmed","{smpl}_forw.info.gz")
   output:
     bedpe_BC = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.bedpe.gz"),
     log      = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.log"),
