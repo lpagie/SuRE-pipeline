@@ -246,6 +246,8 @@ rule iPCR_coordsort_bam:
     bai=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam.bai"))
   threads: 4
   conda: CONDA_ENV
+  resources:
+    ram=40
   shell:
     "samtools sort -o {output.bam} -@ {threads} -m 20G -T {output.bam} {input} ; "
     "samtools index {output.bam} ; "
