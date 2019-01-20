@@ -331,6 +331,8 @@ rule addBC2bedpe:
     log      = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.log"),
     stats    = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.stats"),
   conda: CONDA_ENV
+  resources:
+    ram=40
   shell:
     "python {iPCR_addBC2bedpe} --bedpe {input.bedpe} --info {input.info} --out {output.bedpe_BC} --log {output.log} --stats {output.stats}"
 
