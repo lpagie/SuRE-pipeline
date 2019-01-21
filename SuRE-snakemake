@@ -124,12 +124,44 @@ rule bedpe:
            c=config["CHR_TARGET"],
            ass=['paternal','maternal','equal','ambiguous']) 
 
-rule bedpe_BC:
-  input:
-    expand(os.path.join(iPCR_OUTDIR, "{s}", "07_bedpe_BC", "{ass}","{s}_{c}.bedpe.gz"), 
+def bedpe_BC_equal_input(wildcards):
+  return expand(os.path.join(iPCR_OUTDIR, "{s}", "07_bedpe_BC", "{ass}","{s}_{c}.bedpe.gz"), 
            s=config["iPCR"]["SAMPLES"].keys(), 
            c=config["CHR_TARGET"],
-           ass=['paternal','maternal','equal','ambiguous']) 
+           ass=['equal']) 
+
+def bedpe_BC_ambiguous_input(wildcards):
+  return expand(os.path.join(iPCR_OUTDIR, "{s}", "07_bedpe_BC", "{ass}","{s}_{c}.bedpe.gz"), 
+           s=config["iPCR"]["SAMPLES"].keys(), 
+           c=config["CHR_TARGET"],
+           ass=['ambiguous']) 
+
+def bedpe_BC_paternal_input(wildcards):
+  return expand(os.path.join(iPCR_OUTDIR, "{s}", "07_bedpe_BC", "{ass}","{s}_{c}.bedpe.gz"), 
+           s=config["iPCR"]["SAMPLES"].keys(), 
+           c=config["CHR_TARGET"],
+           ass=['paternal']) 
+
+def bedpe_BC_maternal_input(wildcards):
+  return expand(os.path.join(iPCR_OUTDIR, "{s}", "07_bedpe_BC", "{ass}","{s}_{c}.bedpe.gz"), 
+           s=config["iPCR"]["SAMPLES"].keys(), 
+           c=config["CHR_TARGET"],
+           ass=['maternal']) 
+
+rule bedpe_BC_equal:
+  input: bedpe_BC_equal_input
+
+rule bedpe_BC_ambiguous:
+  input: bedpe_BC_ambiguous_input
+
+rule bedpe_BC_paternal:
+  input: bedpe_BC_paternal_input
+
+rule bedpe_BC_maternal:
+  input: bedpe_BC_maternal_input
+
+rule bedpe_BC:
+  input: bedpe_BC_equal_input, bedpe_BC_ambiguous_input, bedpe_BC_paternal_input, bedpe_BC_maternal_input
 
 rule QA:
   input:
