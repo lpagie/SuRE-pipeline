@@ -125,8 +125,8 @@ def annotate_snp(snp, r1, r2, patmat):
         # check if genomic position is covered by read and not deleted in read
             rel_pos = r.get_reference_positions().index(snp.start)
         except ValueError:
-            snp_base = None
-            snp_var = -2
+            snp_base = "N"
+            snp_var = -4
             snp_patmat = 'pos deleted in read'
             return (snp_base, snp_var, snp_patmat)
 
@@ -165,7 +165,7 @@ def annotate_snp(snp, r1, r2, patmat):
             print(snp.alleles)
             sys.exit()
 
-        snp_var = -2 # base is not covered by either of the two reads
+        snp_var = -2 if snp_base in ['A','C','G','T'] else -5 # base is not covered by either of the two reads: if 'normal' base then homozygous (-2), otherwise heterozygous (-5)
         snp_patmat = "unread"
         annot = [(snp_base, snp_var, snp_patmat)]
     else:
@@ -199,7 +199,7 @@ def annotate_indel(snp, r1, r2, patmat):
             snp_base = expect_seq
             snp_patmat = patmat
         else:
-            snp_var = -1 # observed sequence differs from expected sequence, unclear whether observed is another allele or sequencing error or something else
+            snp_var = -3 # observed sequence differs from expected sequence, unclear whether observed is another allele or sequencing error or something else
             snp_patmat = "unexpected"
             snp_base = obs_seq
 
@@ -220,9 +220,10 @@ def annotate_indel(snp, r1, r2, patmat):
         # snp does not overlap completely with either read; check if homolgous alleles
         if re.match(r'^(.*)\|\1$',snp.samples[0].data.GT): # both parents have same allele
             snp_base = snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])]
+            snp_var = -2 # base is not fully covered by either of the two reads, but homozygous
         else:
-            snp_base = ""
-        snp_var = -2 # base is not fully covered by either of the two reads
+            snp_base = "N"
+            snp_var = -5 # base is not fully covered by either of the two reads and heterozygous
         snp_patmat = "unread"
         annot = [(snp_base, snp_var, snp_patmat)]
         return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
