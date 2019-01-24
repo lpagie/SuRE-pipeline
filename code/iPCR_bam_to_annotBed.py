@@ -95,7 +95,7 @@ def open_bam(bam_fname):
 
 def open_output(options):
     out = gzip.open(options.out, 'wb')
-    header = "readID chrom start end length strand iend istart MAPQ1 MAPQ2 MD1 MD2 XS1 XS2 SEQ1 SEQ2 CIGAR1 CIGAR2 SNP_REL_POS SNP_ID SNP_SEQ SNP_VAR SNP_PARENT SNP_TYPE SNP_SUBTYPE"
+    header = "readID chrom start end length strand iend istart MAPQ1 MAPQ2 MD1 MD2 XS1 XS2 SEQ1 SEQ2 CIGAR1 CIGAR2 SNP_ABS_POS SNP_REL_POS SNP_ID SNP_SEQ SNP_VAR SNP_PARENT SNP_TYPE SNP_SUBTYPE"
     # replace spaces in header string with tabs
     header = header.replace(" ", "\t")
     # add a newline to the headerline
@@ -149,6 +149,7 @@ def annotate_snp(snp, r1, r2, patmat):
         return (snp_base, snp_var, snp_patmat)
 
     snp_ID = snp.ID
+    snp_abs_pos = snp.start
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
     snp_type    = snp.var_type
     snp_subtype = snp.var_subtype
@@ -174,7 +175,7 @@ def annotate_snp(snp, r1, r2, patmat):
         if snp.POS > r2.reference_start:
             annot.append(annotate_snp_in_read(r2))
 
-    return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype)
+    return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
 
 
 def annotate_indel(snp, r1, r2, patmat):
@@ -205,6 +206,7 @@ def annotate_indel(snp, r1, r2, patmat):
         return (snp_base, snp_var, snp_patmat)
 
     snp_ID      = snp.ID
+    snp_abs_pos = snp.start
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
     snp_max_end = snp.start + max(len(allele) for allele in snp.alleles) 
     snp_type    = snp.var_type
@@ -223,7 +225,7 @@ def annotate_indel(snp, r1, r2, patmat):
         snp_var = -2 # base is not fully covered by either of the two reads
         snp_patmat = "unread"
         annot = [(snp_base, snp_var, snp_patmat)]
-        return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype)
+        return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
     else:
         if snp_max_end < r1.reference_end:
             # snp overlaps completely with read1
@@ -231,7 +233,7 @@ def annotate_indel(snp, r1, r2, patmat):
         if snp.start > r2.reference_start:
             # snp overlaps completely with read2
             annot.append(annotate_indel_in_read(r2))
-    return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype)
+    return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
 
 def annotate_fragment(r1, r2, vcf, patmat):
     # find overlapping SNPs
@@ -277,6 +279,7 @@ def _stringify_fragment(r1, r2, snp_annot):
     cigar1 = r1.cigarstring or ''
     cigar2 = r2.cigarstring or ''
     if None is not snp_annot:
+        snp_abs_pos = _stringify([pos  for annot in snp_annot for pos in [annot[5]]*len(annot[2])])
         snp_rel_pos = _stringify([pos  for annot in snp_annot for pos in [annot[0]]*len(annot[2])])
         snp_ID      = _stringify([ID   for annot in snp_annot for ID  in [annot[1]]*len(annot[2])])
         snp_base    = _stringify([a[0] for annot in snp_annot for a in annot[2]])
@@ -285,6 +288,7 @@ def _stringify_fragment(r1, r2, snp_annot):
         snp_type    = _stringify([stype for annot in snp_annot for stype in [annot[3]]*len(annot[2])])
         snp_subtype = _stringify([stype for annot in snp_annot for stype in [annot[4]]*len(annot[2])])
     else:
+        snp_abs_pos    = ""
         snp_rel_pos    = ""
         snp_ID         = ""
         snp_base       = ""
@@ -299,7 +303,7 @@ def _stringify_fragment(r1, r2, snp_annot):
                           str(r1.reference_end), str(r2.reference_start), 
                           str(r1.mapping_quality), str(r2.mapping_quality), 
                           md1, md2, alt1, alt2, r1.query_sequence, r2.query_sequence, cigar1, cigar2, 
-                          snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat, snp_type, snp_subtype])
+                          snp_abs_pos, snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat, snp_type, snp_subtype])
     except TypeError:
         print(md1)
         print(md2)
@@ -309,7 +313,7 @@ def _stringify_fragment(r1, r2, snp_annot):
                                              str(r1.reference_end), str(r2.reference_start), 
                                              str(r1.mapping_quality), str(r2.mapping_quality), 
                                              md1, md2, alt1, alt2, cigar1, cigar2, 
-                                             snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat, snp_type, snp_subtype]:
+                                             snp_abs_pos, snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat, snp_type, snp_subtype]:
             print(type(e))
         print("failing fragment with readID %s" % r1.query_name)
         return
