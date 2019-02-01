@@ -40,6 +40,7 @@ WASP_DIR                = os.path.join(CODE_BASE, "WASP/mapping")
 PY2_WASP                = "PYTHONPATH=$PYTHONPATH:" + WASP_DIR + " python2.7 "
 SNP_DIR                 = "/DATA/home/ludo/projects/LP140430_SureSeq_JvArensbergen/data/LP170210_SuRE42-45_1000Genomes/"
 SPLITBAM                = "bam splitChromosome "
+R                       = "/usr/bin/Rscript --vanilla"
 
 cDNA_script             = os.path.join(CODE_BASE, "cDNA-plDNA-count-BC.bash")
 iPCR_trim_script        = os.path.join(CODE_BASE, "iPCR-trim.bash")
@@ -47,6 +48,7 @@ iPCR_mapOnly_script     = os.path.join(CODE_BASE, "iPCR-map.bash")
 iPCR_bam2bedpe_script   = os.path.join(CODE_BASE, "iPCR_bam_to_annotBed.py")
 iPCR_single_QA_script   = os.path.join(CODE_BASE, "iPCR-single-QA.bash")
 iPCR_merge_script       = os.path.join(CODE_BASE, "iPCR-merge-bedpe-Filter-BC-multi-pos.bash")
+iPCR_merge_bedpe_smpls  = os.path.join(CODE_BASE, "merge_bedpe_over_samples.R")
 iPCR_addBC2bedpe        = os.path.join(CODE_BASE, "iPCR_addBC2bedpe.py")
 split_bedpe_script      = os.path.join(CODE_BASE, "split-bedpe2chr.sh")
 merge_all_script        = os.path.join(CODE_BASE, "merge-iPCR-cDNA-plDNA.bash")
@@ -162,6 +164,9 @@ rule bedpe_BC_maternal:
 
 rule bedpe_BC:
   input: bedpe_BC_equal_input, bedpe_BC_ambiguous_input, bedpe_BC_paternal_input, bedpe_BC_maternal_input
+
+rule bedpe_merged_smpls:
+  input: expand(os.path.join(iPCR_OUTDIR, "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz"), c=config["CHR_TARGET"], ass=['paternal','maternal','equal','ambiguous']) 
 
 rule QA:
   input:
@@ -377,14 +382,18 @@ def iPCR_map_input(wildcards):
 
 rule iPCR_merge_bedpe:
   input:
-    expand(os.path.join(iPCR_OUTDIR, "{s}", "{s}_{{c}}.bedpe.gz"), s=iPCR_SAMPLES.keys())
+    # expand(os.path.join(iPCR_OUTDIR, "{s}", "{s}_{{c}}.bedpe.gz"), s=iPCR_SAMPLES.keys())
+    expand(os.path.join("{{path}}", "{smpl}", "07_bedpe_BC", "{{ass}}", "{smpl}_{{c}}.bedpe.gz"), smpl=config["iPCR"]["SAMPLES"].keys())
   output:
-    os.path.join(iPCR_OUTDIR, "bed-annot", "iPCR-combined-bedpe_{c}.txt.gz")
-  params:
-    dir=os.path.join(iPCR_OUTDIR, "bed-annot")
-  conda: CONDA_ENV
+    bedpe = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz"),
+    log = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.log")
+#  params:
+#    dir=os.path.join(iPCR_OUTDIR, "bed-annot")
+#   conda: CONDA_ENV
+#  script:
+#    iPCR_merge_bedpe_smpls
   shell:
-    "{iPCR_merge_script} -l -o '{params.dir}' -b {output} {input}"
+    "{R} {iPCR_merge_bedpe_smpls} {output.bedpe} {output.log} {input}"
 
 rule iPCR_annot_WASP:
   input:
