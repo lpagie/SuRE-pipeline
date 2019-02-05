@@ -74,7 +74,7 @@ log <- function(msg="") {
 bedpe_fnames <- input
 # bedpe_fnames <- snakemake@input
 log(c("feature-merge-bedpe-R: merging the following bedpe files:",bedpe_fnames)) 
-bedpe <- rbindlist(lapply(bedpe_fnames, fread, nrows=-100))
+bedpe <- rbindlist(lapply(bedpe_fnames, fread, nrows=-100, nThread=4))
 log(c("feature-merge-bedpe-R: done importing, start grouping"))
 bedpe <- bedpe[,.(chrom, start=max(start), end=min(end), count=.N, strand, SNP_ABS_POS, SNP_SEQ, SNP_PARENT, SNP_VAR, SNP_TYPE, SNP_SUBTYPE),by=.(BC,SNP_ID)
                    ][order(BC,-count), .SD[1,], by=BC]
