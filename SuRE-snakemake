@@ -389,6 +389,7 @@ rule iPCR_merge_bedpe:
     log = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.log")
   resources:
     ram=40
+  threads: 4
 #  params:
 #    dir=os.path.join(iPCR_OUTDIR, "bed-annot")
 #   conda: CONDA_ENV

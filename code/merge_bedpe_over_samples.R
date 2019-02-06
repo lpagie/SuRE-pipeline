@@ -49,6 +49,8 @@
 library(argparse)
 library(data.table)
 
+setDTthreads(threads = 4)
+
 # argument parsing
 
 args <- commandArgs(trailingOnly=TRUE)
@@ -79,7 +81,7 @@ log(c("feature-merge-bedpe-R: done importing, start grouping"))
 bedpe <- bedpe[,.(chrom, start=max(start), end=min(end), count=.N, strand, SNP_ABS_POS, SNP_SEQ, SNP_PARENT, SNP_VAR, SNP_TYPE, SNP_SUBTYPE),by=.(BC,SNP_ID)
                    ][order(BC,-count), .SD[1,], by=BC]
 log(c("feature-merge-bedpe-R: done grouping, start export"))
-fwrite(x=bedpe, file=output.bedpe, quote=FALSE, sep="\t",nThread=4)
+fwrite(x=bedpe, file=output.bedpe, quote=FALSE, sep="\t")
 # fwrite(x=bedpe, file=snakemake@output[['bedpe']], quote=FALSE, sep="\t",nThread=4)
 log("feature-merge-bedpe-R: done export")
 
