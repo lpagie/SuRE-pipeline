@@ -168,6 +168,9 @@ rule bedpe_BC:
 rule bedpe_merged_smpls:
   input: expand(os.path.join(iPCR_OUTDIR, "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz"), c=config["CHR_TARGET"], ass=['paternal','maternal','equal','ambiguous']) 
 
+rule merged_ipcr_cdna:
+  input: expand(os.path.join(config["OUTDIR"], "count_tables", "09_ipcr_cdna_merged", "{ass}", "{c}.bedpe.gz"), c=config["CHR_TARGET"], ass=['paternal','maternal','equal','ambiguous']) 
+
 rule QA:
   input:
     expand(os.path.join(iPCR_OUTDIR, "{s}", "iPCR_single_QA.{s}.done"), s=iPCR_SAMPLES.keys())
@@ -374,15 +377,8 @@ rule addBC2bedpe:
     "python {iPCR_addBC2bedpe} --bedpe {input.bedpe} --info {input.info} --out {output.bedpe_BC} --log {output.log} --stats {output.stats}"
 
 
-def iPCR_map_input(wildcards):
-  if (ALLELE_SPECIFIC):
-    return os.path.join(iPCR_OUTDIR,wildcards.s,"merge",wildcards.s+"_"+wildcards.c+".keep.merge.bam") 
-  else:
-    return os.path.join(iPCR_OUTDIR,wildcards.s,"map1_sort",wildcards.s+"_"+wildcards.c+".bam")
-
 rule iPCR_merge_bedpe:
   input:
-    # expand(os.path.join(iPCR_OUTDIR, "{s}", "{s}_{{c}}.bedpe.gz"), s=iPCR_SAMPLES.keys())
     expand(os.path.join("{{path}}", "{smpl}", "07_bedpe_BC", "{{ass}}", "{smpl}_{{c}}.bedpe.gz"), smpl=config["iPCR"]["SAMPLES"].keys())
   output:
     bedpe = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz"),
@@ -390,14 +386,23 @@ rule iPCR_merge_bedpe:
   resources:
     ram=40
   threads: 4
-#  params:
-#    dir=os.path.join(iPCR_OUTDIR, "bed-annot")
-#   conda: CONDA_ENV
-#  script:
-#    iPCR_merge_bedpe_smpls
   shell:
     "{R} {iPCR_merge_bedpe_smpls} {output.bedpe} {output.log} {input}"
 
+rule merge_ipcr_cdna:
+  input:
+    cdna = expand(os.path.join(config["OUTDIR"], config["cDNA"]["OUTDIR"], "{smpl}", "{smpl}_trimmed_table.txt.gz"), smpl=config["cDNA"]["SAMPLES"].keys()),
+    bedpe = os.path.join(config["OUTDIR"], config["iPCR"]["OUTDIR"], "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz"),
+  output:
+    count_tbl = os.path.join(config["OUTDIR"], "count_tables", "09_ipcr_cdna_merged", "{ass}", "{c}.bedpe.gz"),
+    log = os.path.join(config["OUTDIR"], "count_tables", "09_ipcr_cdna_merged", "{ass}", "{c}.log")
+  resources:
+    ram=40
+  shell:
+    "{R} {iPCR_merge_bedpe_smpls} {output.count_tbl} {output.log} {input.bedpe} {input.cdna}"
+
+################################################################################
+#
 rule iPCR_annot_WASP:
   input:
     bedpe=os.path.join(iPCR_OUTDIR, "bed-annot", "iPCR-combined-bedpe_{c}.txt.gz"),
