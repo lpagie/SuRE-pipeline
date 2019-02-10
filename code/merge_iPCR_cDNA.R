@@ -27,7 +27,6 @@ library(R.utils)
 # set max number of threads to be used by any data.table function:
 setDTthreads(threads=4)
 
-if(0) {
 # argument parsing
 args <- commandArgs(trailingOnly=TRUE)
 output.bedpe <- args[1]
@@ -46,7 +45,6 @@ log <- function(msg="") {
   }
   write(x = msg, file = logout)
   flush(logout)
-}
 }
 
 # prev.time <- cur.time <- start.time <- Sys.time()
@@ -73,6 +71,7 @@ log <- function(msg="") {
 
 # bedpe.fn <- '/DATA/usr/ludo/projects/LP140430_SureSeq_JvArensbergen/analyses/LP181220_SuRE42-45-INDEL/SuRE42-1_pipelineOutput/iPCR/samples_merged/08_bedpe_merged/equal/5.bedpe.gz'
 # import bedpe data
+log("reading bedpe input")
 bedpe <- fread(input.bedpe, nrow=-10,key='BC')
 
 # cat("finished reading bedpe, time is", cur.time <- Sys.time())
@@ -80,8 +79,13 @@ bedpe <- fread(input.bedpe, nrow=-10,key='BC')
 # cat("time elapsed since start is",cur.time-start.time); prev.time <- cur.time
 
 # import cdna data and merge with bedpe data
-for (f in input.cdna)
-  bedpe <- merge(bedpe, fread(f, header=F, nrow=-100000, nThread=1, col.names=c(sub('-T1_trimmed_table.txt.gz','',basename(f)),'BC'),key='BC'), all.x=TRUE)
+log("reading cdna input")
+for (f in input.cdna) {
+  if (nrow(bedpe)>0)
+    bedpe <- merge(bedpe, fread(f, header=F, nrow=-100000, nThread=1, col.names=c(sub('-T1_trimmed_table.txt.gz','',basename(f)),'BC'),key='BC'), all.x=TRUE)
+  else
+    bedpe[[sub('-T1_trimmed_table.txt.gz','',basename(f))]]=integer()
+}
 # set all counts not observed in cDNA data to 0
 bedpe[is.na(bedpe)] <- 0
 
@@ -90,19 +94,19 @@ bedpe[is.na(bedpe)] <- 0
 # cat("time elapsed since start is",cur.time-start.time); prev.time <- cur.time
 
 # export bedpe data to file
+log("writing output")
 if(endsWith(output.bedpe, ".gz")) {
   fname <- sub(".gz$","",output.bedpe)
   fwrite(bedpe, fname, sep="\t", quote=FALSE)
-  gzip(fname, destfilename=out.bedpe)
+  gzip(fname, destname=output.bedpe)
   unlink(fname)
-}
-else {
+} else {
   fwrite(bedpe, output.bedpe, sep="\t", quote=FALSE)
 }
 
 # cat("finished writing and compressing output, time is", cur.time <- Sys.time())
 # cat("time elapsed in this step is",cur.time-prev.time); prev.time <- cur.time
 # cat("time elapsed since start is",cur.time-start.time); prev.time <- cur.time
-
+log("done")
 quit(save='no')
 

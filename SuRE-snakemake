@@ -52,6 +52,7 @@ iPCR_merge_bedpe_smpls  = os.path.join(CODE_BASE, "merge_bedpe_over_samples.R")
 iPCR_addBC2bedpe        = os.path.join(CODE_BASE, "iPCR_addBC2bedpe.py")
 split_bedpe_script      = os.path.join(CODE_BASE, "split-bedpe2chr.sh")
 merge_all_script        = os.path.join(CODE_BASE, "merge-iPCR-cDNA-plDNA.bash")
+merge_ipcr_cdna         = os.path.join(CODE_BASE, "merge_iPCR_cDNA.R")
 add_homozygous_baseIdentities_script = os.path.join(CODE_BASE, "add-homozygous-baseIndentities.bash")
 ASSIGN_PARENT_SCRIPT    = os.path.join(CODE_BASE, "iPCR_assign_parent.py")
 
@@ -399,7 +400,7 @@ rule merge_ipcr_cdna:
   resources:
     ram=40
   shell:
-    "{R} {iPCR_merge_bedpe_smpls} {output.count_tbl} {output.log} {input.bedpe} {input.cdna}"
+    "{R} {merge_ipcr_cdna} {output.count_tbl} {output.log} {input.bedpe} {input.cdna}"
 
 ################################################################################
 #
