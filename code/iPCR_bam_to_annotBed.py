@@ -27,6 +27,7 @@ import re
 import pysam
 import vcf
 from bx.intervals.intersection import Interval, IntervalTree
+import atexit
 
 CHRS = ['1','2','3','4','5','6','7','8','9',
        '10','11','12','13','14','15','16','17','18','19',
@@ -44,10 +45,28 @@ def parse_options():
                         help=('output bedpe-like file'))
     parser.add_argument('-p', '--patmat',required=True,choices=['paternal', 'maternal'],
                         help=('paternal (1st) or maternal (2nd) genotype'))
-    parser.add_argument('-l', '--log',required=False,default=None,
+    parser.add_argument('-l', '--log',required=True,default=None,
                         help=('genomeID'))
     options = parser.parse_args()
     return options
+
+
+# setup functions for logging progress
+# print statements regarding execution errors and such are printed to stdout,
+# meaning these will appear in the main log file. The log setup here will
+# receive extended log prints (here eg, discarded SNPs which are not snp/indel)
+log_out = None
+def log_close():
+    log_out.close()
+
+def init(options):
+    global log_out
+    log_out = open(options.log, "a+")
+    atexit.register(log_close)
+
+def log(msg):
+    log_out.write("iPCR_bam_to_annotBed.py: %s" % msg)
+    log_out.flush()
 
 
 def import_VCF(vcf_fname):
@@ -163,6 +182,7 @@ def annotate_snp(snp, r1, r2, patmat):
         except NameError:
             print("error in annotate_snp_in_read with SNP %s" % snp)
             print(snp.alleles)
+            print(NameError)
             sys.exit()
 
         snp_var = -2 if snp_base in ['A','C','G','T'] else -5 # base is not covered by either of the two reads: if 'normal' base then homozygous (-2), otherwise heterozygous (-5)
@@ -249,11 +269,13 @@ def annotate_fragment(r1, r2, vcf, patmat):
             snp_annot.append(annotate_snp(s.value, r1, r2, patmat))
         elif s.value.is_indel:
             annot = annotate_indel(s.value,r1,r2, patmat)
-            # indel may overlap boundaries of reads/fragment in which case annot may be None; discard in that case
+            # indel may overlap boundaries of reads/fragment in which case
+            # annot may be None; discard in that case
             if annot is not None:
                 snp_annot.append(annot)
         else:
-            print (s.value)
+            # HERE IS THE THING
+            log("discarded SNP: %s" % s.value)
     return(snp_annot)
 
 def _stringify_fragment(r1, r2, snp_annot):
@@ -317,6 +339,7 @@ def _stringify_fragment(r1, r2, snp_annot):
                                              snp_abs_pos, snp_rel_pos, snp_ID, snp_base, snp_var, snp_patmat, snp_type, snp_subtype]:
             print(type(e))
         print("failing fragment with readID %s" % r1.query_name)
+        print(TypeError)
         return
 
     fragment += "\n"
@@ -328,7 +351,7 @@ def write_fragment(r1, r2, snp_annot, out):
     return
 
 def main(options):
-    # some checks on cell line, chromosome, paternal/maternal, bam is sorted on readname
+    init(options)
     # get interface to reads in bamfiles
     print("opening bam file %s" % options.bam)
     reads = open_bam(options.bam)
@@ -363,7 +386,6 @@ def main(options):
     return
 
 
-# run -n LP180726_SNPannot-altRefReads.py
 
 if __name__ == "__main__":
     sys.stderr.write("command: %s\n" % " ".join(sys.argv))
