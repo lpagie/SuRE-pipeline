@@ -53,6 +53,7 @@ iPCR_addBC2bedpe        = os.path.join(CODE_BASE, "iPCR_addBC2bedpe.py")
 split_bedpe_script      = os.path.join(CODE_BASE, "split-bedpe2chr.sh")
 merge_all_script        = os.path.join(CODE_BASE, "merge-iPCR-cDNA-plDNA.bash")
 merge_ipcr_cdna         = os.path.join(CODE_BASE, "merge_iPCR_cDNA.R")
+reverse_liftover_script = os.path.join(CODE_BASE, "liftover_reverse.py")
 add_homozygous_baseIdentities_script = os.path.join(CODE_BASE, "add-homozygous-baseIndentities.bash")
 ASSIGN_PARENT_SCRIPT    = os.path.join(CODE_BASE, "iPCR_assign_parent.py")
 
@@ -171,6 +172,9 @@ rule bedpe_merged_smpls:
 
 rule merged_ipcr_cdna:
   input: expand(os.path.join(config["OUTDIR"], "count_tables", "09_ipcr_cdna_merged", "{ass}", "{c}.bedpe.gz"), c=config["CHR_TARGET"], ass=['paternal','maternal','equal','ambiguous']) 
+
+rule reversed_liftover:
+  input: expand(os.path.join(config["OUTDIR"], "count_tables", "10_reverse_liftover", "{ass}", "{c}.bedpe.gz"), c=config["CHR_TARGET"], ass=['paternal','maternal','equal','ambiguous']) 
 
 rule QA:
   input:
@@ -403,6 +407,30 @@ rule merge_ipcr_cdna:
     ram=40
   shell:
     "{R} {merge_ipcr_cdna} {output.count_tbl} {output.log} {input.bedpe} {input.cdna}"
+
+def ass2parental(wildcards):
+  return "maternal" if wildcards.ass == "maternal" else "paternal"
+
+def chain_input(wildcards):
+  parental = ass2parental(wildcards)
+  return(os.path.join(config['VCF_DIR'], config['GID'], parental+"_min-gap_reverse.chain"))
+
+rule reverse_liftover:
+  input: 
+    count_tbl = os.path.join(config["OUTDIR"], "count_tables", "09_ipcr_cdna_merged", "{ass}", "{c}.bedpe.gz"),
+    chainfile = chain_input
+  output:
+    count_tbl = os.path.join(config["OUTDIR"], "count_tables", "10_reverse_liftover", "{ass}", "{c}.bedpe.gz"),
+    log = os.path.join(config["OUTDIR"], "count_tables", "10_reverse_liftover", "{ass}", "{c}.log")
+  params:
+    parental = ass2parental,
+    genomeID = "hg19"
+  conda: CONDA_ENV
+  resources:
+    ram=30
+  shell:
+    "python {reverse_liftover_script} --inn {input.count_tbl} --chainfile {input.chainfile} --out {output.count_tbl} --log {output.log} --parent '{params.parental}' --genomeTag '{params.genomeID}'"
+
 
 ################################################################################
 #
