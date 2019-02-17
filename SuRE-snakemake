@@ -384,13 +384,13 @@ rule iPCR_merge_bedpe:
   input:
     expand(os.path.join("{{path}}", "{smpl}", "07_bedpe_BC", "{{ass}}", "{smpl}_{{c}}.bedpe.gz"), smpl=config["iPCR"]["SAMPLES"].keys())
   output:
-    bedpe = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz"),
-    log = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.log")
+    bedpe = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz")
+  log: os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.log")
   resources:
     ram=40
   threads: 4
   shell:
-    "{R} {iPCR_merge_bedpe_smpls} {output.bedpe} {output.log} {input}"
+    "{R} {iPCR_merge_bedpe_smpls} {output.bedpe} {log} {input}"
 
 rule merge_ipcr_cdna:
   input:
