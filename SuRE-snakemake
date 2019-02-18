@@ -56,6 +56,7 @@ merge_ipcr_cdna         = os.path.join(CODE_BASE, "merge_iPCR_cDNA.R")
 reverse_liftover_script = os.path.join(CODE_BASE, "liftover_reverse.py")
 add_homozygous_baseIdentities_script = os.path.join(CODE_BASE, "add-homozygous-baseIndentities.bash")
 ASSIGN_PARENT_SCRIPT    = os.path.join(CODE_BASE, "iPCR_assign_parent.py")
+sort_cnt_tbl_sh        = os.path.join(CODE_BASE, "sort_cnt_tbls.sh")
 
 ADPTR_IPCR_FORW_SEQ     = config["ADPTR_IPCR_FORW_SEQ"]
 ADPTR_IPCR_REV_SEQ      = config["ADPTR_IPCR_REV_SEQ"]
@@ -175,6 +176,13 @@ rule merged_ipcr_cdna:
 
 rule reversed_liftover:
   input: expand(os.path.join(config["OUTDIR"], "count_tables", "10_reverse_liftover", "{ass}", "{c}.bedpe.gz"), c=config["CHR_TARGET"], ass=['paternal','maternal','equal','ambiguous']) 
+
+rule sorted_cnt_tbls:
+  input: expand(os.path.join(config["OUTDIR"], "count_tables", "11_sorted", "{ass}", "{c}.bedpe.gz"), c=config["CHR_TARGET"], ass=['paternal','maternal','equal','ambiguous']) 
+
+# rule bed2coverage:
+#   input:
+#     "bed2coverage.done"
 
 rule QA:
   input:
@@ -431,6 +439,18 @@ rule reverse_liftover:
   shell:
     "python {reverse_liftover_script} --inn {input.count_tbl} --chainfile {input.chainfile} --out {output.count_tbl} --log {output.log} --parent '{params.parental}' --genomeTag '{params.genomeID}'"
 
+rule sort_cnt_tbls:
+  input:
+    count_tbl = os.path.join(config["OUTDIR"], "count_tables", "10_reverse_liftover", "{ass}", "{c}.bedpe.gz")
+  output:
+    count_tbl = os.path.join(config["OUTDIR"], "count_tables", "11_sorted", "{ass}", "{c}.bedpe.gz")
+  conda: CONDA_ENV
+  resources:
+    ram=50
+  threads: 
+    5
+  shell:
+    "zcat {input.count_tbl} | {sort_cnt_tbl_sh} > {output.count_tbl}"
 
 ################################################################################
 #
