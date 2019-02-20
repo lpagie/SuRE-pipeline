@@ -138,13 +138,20 @@ def classify_parent(rpf,rmf,rpr,rmr):
 def classify_reads(ibam, obam):
     reads = zip(ibam['paternal'].fetch(until_eof=True),
                 ibam['maternal'].fetch(until_eof=True))
+    classes = {}
     for rpf, rmf in reads:
         rpr, rmr = next(reads)
         read_class,read = classify_parent(rpf,rmf,rpr,rmr)
+        if read_class in classes.keys():
+            classes[read_class] += 1
+        else:
+            classes[read_class] = 1
         if (read_class in ['paternal', 'maternal', 'equal', 'ambiguous']):
             # if (read_class=='paternal' or read_class=='maternal'):
             obam[read_class].write(read['forw'])
             obam[read_class].write(read['rev'])
+    for k in classes.keys():
+        print ("readclass '%s' has count %d" % (k, classes[k]))
 
 def main(options):
     # open input bam files
