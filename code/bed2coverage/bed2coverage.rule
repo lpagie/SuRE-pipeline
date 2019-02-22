@@ -55,21 +55,27 @@ ASSEMBLY=config["ASSEMBLY"]
 # determine files for output
 EXT=[".cov.bw", ".cov.plus.bw", ".cov.minus.bw"]
 EXTFLAT=[".covflat.bw", ".covflat.plus.bw", ".covflat.minus.bw"]
+
 if config['cDNA']["SAMPLES"] is None:
   OUTFILES_cDNA=[];
 else:
 #   OUTFILES_cDNA  = [os.path.join(OUTDIR, config["cDNA"]["OUTDIR"], s, s+e) for s in config['cDNA']["SAMPLES"] for e in EXT]
-  OUTFILES_cDNA = expand(os.path.join(cDNA_OUTDIR, "{s}", "{s}_{c}{e}"), s=config['cDNA']["SAMPLES"], c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
-if config["plDNA"]["SAMPLES"] is None:
-  OUTFILES_plDNA=[]
-else:
-#  OUTFILES_plDNA  = [os.path.join(OUTDIR, config["plDNA"]["OUTDIR"], s, s+e) for s in config['plDNA']["SAMPLES"] for e in EXT+EXTFLAT]
-  OUTFILES_plDNA = expand(os.path.join(plDNA_OUTDIR, "{s}", "{s}_{c}{e}"), s=config['plDNA']["SAMPLES"], c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
+  # OUTFILES_cDNA = expand(os.path.join(cDNA_OUTDIR, "{s}", "{s}_{c}{e}"), s=config['cDNA']["SAMPLES"], c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
+  OUTFILES_cDNA = expand(os.path.join(config["OUTDIR"],"coverage", "cDNA", "{s}", "{s}_{c}{e}"), s=config['cDNA']["SAMPLES"], c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
+
+# if config["plDNA"]["SAMPLES"] is None:
+#   OUTFILES_plDNA=[]
+# else:
+# #  OUTFILES_plDNA  = [os.path.join(OUTDIR, config["plDNA"]["OUTDIR"], s, s+e) for s in config['plDNA']["SAMPLES"] for e in EXT+EXTFLAT]
+#   OUTFILES_plDNA = expand(os.path.join(plDNA_OUTDIR, "{s}", "{s}_{c}{e}"), s=config['plDNA']["SAMPLES"], c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
+
 # OUTFILES_iPCR = [os.path.join(OUTDIR, config["iPCR"]["OUTDIR"], "iPCR"+e) for e in (EXT+EXTFLAT)]
-OUTFILES_iPCR = expand(os.path.join(iPCR_OUTDIR, "iPCR_{c}{e}"), c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
+# OUTFILES_iPCR = expand(os.path.join(iPCR_OUTDIR, "iPCR_{c}{e}"), c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
+OUTFILES_iPCR = expand(os.path.join(config{"OUTDIR"], "coverage","iPCR", "iPCR_{c}{e}"), c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
 if OUTFILES_iPCR is None:
   OUTFILES_iPCR=[]
-OUTFILES      = OUTFILES_cDNA + OUTFILES_plDNA + OUTFILES_iPCR
+# OUTFILES      = OUTFILES_cDNA + OUTFILES_plDNA + OUTFILES_iPCR
+OUTFILES      = OUTFILES_cDNA + OUTFILES_iPCR
 # print("OUTFILES=", OUTFILES, "\n")
 
 if ASSEMBLY == "hg19":
@@ -78,6 +84,7 @@ elif ASSEMBLY == "criGri1":
   CHROMSIZES="/home/NFS/users/l.pagie/data/genomes/criGri1/criGri1.chrom.sizes"
 elif ASSEMBLY == "SL3":
   CHROMSIZES="/DATA/usr/ludo.gx/projects/LP180830_tomato_BAC/data/LP180830_SL3_std-ref-seq/SL3.chromsizes_LP180916"
+
 
 rule bed2coverage:
   input:
