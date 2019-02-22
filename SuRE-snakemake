@@ -373,18 +373,37 @@ rule iPCR_bam2bedpe:
   shell:
     "python {iPCR_bam2bedpe_script} -b {input.bam}  -v {input.vcf} -o {output.bedpe} -p '{params.patmat}' -l {log}; "
 
-rule addBC2bedpe:
+# rule addBC2bedpe:
+#   # associate barcode sequence (from info file generated dusing fastq trimming)
+#   # to SuRE fragments (from bedpe file) via readID in both files.
+#   # INPUT: bedpe file from rule iPCR_bam2bedpe, info file from rule iPCR_trim
+#   # OUTPUT: compressed bedpe-like file
+#   input:
+#     bedpe    = os.path.join("{path}", "{smpl}", "06_bedpe", "{ass}", "{smpl}_{c}.bedpe.gz"),
+#     info     = os.path.join(iPCR_OUTDIR,"{smpl}","01_fastq_trimmed","{smpl}_forw.info.gz")
+#   output:
+#     bedpe_BC = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.bedpe.gz"),
+#     log      = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.log"),
+#     stats    = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.stats"),
+#   conda: CONDA_ENV
+#   resources:
+#     ram=30
+#   shell:
+#     "python {iPCR_addBC2bedpe} --bedpe {input.bedpe} --info {input.info} --out {output.bedpe_BC} --log {output.log} --stats {output.stats}"
+
+
+rule addBC2bedpe_multi:
   # associate barcode sequence (from info file generated dusing fastq trimming)
   # to SuRE fragments (from bedpe file) via readID in both files.
   # INPUT: bedpe file from rule iPCR_bam2bedpe, info file from rule iPCR_trim
   # OUTPUT: compressed bedpe-like file
   input:
-    bedpe    = os.path.join("{path}", "{smpl}", "06_bedpe", "{ass}", "{smpl}_{c}.bedpe.gz"),
+    bedpe    = expand(os.path.join("{{path}}", "{{smpl}}", "06_bedpe", "{{ass}}", "{{smpl}}_{c}.bedpe.gz"),c=config["CHR_TARGET"]),
     info     = os.path.join(iPCR_OUTDIR,"{smpl}","01_fastq_trimmed","{smpl}_forw.info.gz")
   output:
-    bedpe_BC = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.bedpe.gz"),
-    log      = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.log"),
-    stats    = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}_{c}.stats"),
+    bedpe_BC = expand(os.path.join("{{path}}", "{{smpl}}", "07_bedpe_BC", "{{ass}}", "{{smpl}}_{c}.bedpe.gz"),c=config["CHR_TARGET"]),
+    log      = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}.log"),
+    stats    = os.path.join("{path}", "{smpl}", "07_bedpe_BC", "{ass}", "{smpl}.stats"),
   conda: CONDA_ENV
   resources:
     ram=30

@@ -37,11 +37,11 @@ def parse_options():
 # parse user options:
     parser = argparse.ArgumentParser(
         description="Annotate SNPs in reads, given alignments on paternal and maternal genome")
-    parser.add_argument('-b', '--bedpe', required=True,
+    parser.add_argument('-b', '--bedpe', required=True, nargs='+',
                         help=('bedpe file'))
     parser.add_argument('-i', '--info', required=True,
                         help=('info file for corresponding sample'))
-    parser.add_argument('-o', '--out', required=True,
+    parser.add_argument('-o', '--out', required=True, nargs='+',
                         help=('output bedpe-like file'))
     parser.add_argument('-l', '--log', required=True,
                         help=('log file'))
@@ -112,12 +112,14 @@ def main(options):
     stats = open_stats(options.stats, log)
     # import infofile with barcodes
     barcodes = import_barcodes(options.info, log, stats)
-    # import bedpe file; store in pandas dataframe
-    bedpe = import_bedpe(options.bedpe, log, stats)
-    # merge bedpe and barcodes
-    bedpe = addBC2bedpe(bedpe, barcodes, log, stats)
-    # write merged bedpe to output
-    write_merged_bedpe(bedpe, options.out, log, stats)
+    # iterate over input bedpe files and merge each with the barcodes
+    for bedpe_in, bedpe_out in zip(options.bedpe, options.out):
+        # import bedpe file; store in pandas dataframe
+        bedpe = import_bedpe(bedpe_in, log, stats)
+        # merge bedpe and barcodes
+        bedpe = addBC2bedpe(bedpe, barcodes, log, stats)
+        # write merged bedpe to output
+        write_merged_bedpe(bedpe, bedpe_out, log, stats)
 
     log.write("iPCR_addBC2bedpe.py: processing done\n")
     stats.close()
