@@ -300,7 +300,7 @@ rule iPCR_coordsort_bam:
   threads: 4
   conda: CONDA_ENV
   resources:
-    ram=40
+    ram=60
   shell:
     "samtools sort -o {output.bam} -@ {threads} -m 20G -T {output.bam} {input} ; "
     "samtools index {output.bam} ; "
