@@ -1,14 +1,52 @@
 #!/bin/bash
 
-# BED2COVERAGE="/home/NFS/users/l.pagie/usr/local/bin/bed2coverage"
 WIG2BIGWIG="wigToBigWig" # should be in $PATH
 
-INPUT=$1
-OUTALL=$2
-OUTPLUS=$3
-OUTMINUS=$4
-COLUMN=$5
-CHROMSIZES=$6
+
+# PARSE OPTIONS
+OPTIND=1         # Reset in case getopts has been used previously in the shell.
+USAGE=
+usage() {
+  echo >&2 "usage: ${SCRIPTNAME} -apmcs SuRE-count-files"
+  echo >&2 "OPTIONS:"
+  echo >&2 "  -a: name of 'all' output bigwig file"
+  echo >&2 "  -p: name of 'plus' output bigwig file"
+  echo >&2 "  -m: name of 'minus' output bigwig file"
+  echo >&2 "  -c: name of cDNA column to extract from input table"
+  echo >&2 "  -s: filename with chomosome sizes"
+  echo >&2 "  -h: print this message"
+  echo >&2 ""
+  exit 1;
+}
+while getopts "h?a:p:m:c:s:" opt; do
+  case $opt in
+    a)
+      OUTALL=$OPTARG;
+      ;;
+    p)
+      OUTPLUS=$OPTARG;
+      ;;
+    m)
+      OUTMINUS=$OPTARG;
+      ;;
+    c)
+      COLUMN=$OPTARG;
+      ;;
+    s)
+      CHROMSIZES=$OPTARG;
+      ;;
+    h)
+      usage;
+      ;;
+    \?)
+      echo "option not recognized: "$opt
+      usage
+      ;;
+  esac
+done
+shift $(( OPTIND - 1 ))
+
+INPUT="$@"
 
 tmpfileall=$(mktemp wig.all.XXXXXX)
 tmpfileplus=$(mktemp wig.plus.XXXXXX)
@@ -22,37 +60,32 @@ trap 'rm -rf ${tempdir}' EXIT INT TERM HUP
 waitfifo="${tempdir}/pipe"
 mkfifo "${waitfifo}"
 
-zcat ${INPUT} | awk -v col="${COLUMN}" ' 
-                  BEGIN { OFS="\t"; FS="\t";
-		  NR==1 { for (i=1; i<=NF; i++) {
-		    switch ($i) {
-		      case "chrom":
-		        chr=i
-		        break
-		      case "start_hg19":
-                        start=i
-		        break
-		      case "end_hg19":
-		        end=i
-		        break
-                      case "strand":
-		        strand=i
-		        break
-		      case col:
-		        col=i
-		        break
-		      default:
-		        break
-		      }
-		      next
+zcat $INPUT | awk -v col="${COLUMN}" ' 
+                  BEGIN { OFS="\t"; FS="\t"; }
+		  NR==1 { 
+		    for (i=1; i<=NF; i++) {
+		      headers[$i]=i
 		    }
-		    # rewrite chromosome names to hg19 format
-		    # (eg 4_paternal -> chr4, 17_maternal -> chr17)
-		    chr = gensub("(.*)_[pm]aternal","chr\\1","g",$chr)
+		    chr=headers["chrom"]
+		    start=headers["start_hg19"]
+		    end=headers["end_hg19"]
+		    strand=headers["strand"]
+		    # the column with iPCR counts is called "count"
+		    if (col=="iPCR") { col="count" }
+		    # the column names in the SuRE-counts files miss the "-T1"
+		    # extension, so I need to remove that here as well.
+		    col=headers[gensub("-T1","",1,col)]
+		    next
 		  }
-		  {
-		    if( $start>0 && $end>0) {print chr, $start, $end, $strand, $col}
-		  } '|\
+		  NR==2 {
+		    # rewrite the name of the chromosome to hg19
+		    chr = gensub("(.*)_[pm]aternal","chr\\1","g",$headers["chrom"])
+		  }
+		  !/^BC/{
+		    if( $start>0 && $end>0) {
+		      print chr, $start, $end, $strand, $col}
+		    next
+		  } 
   tee >( { 
          awk '
            BEGIN { OFS="\t"; FS="\t" }

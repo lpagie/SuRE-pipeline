@@ -71,7 +71,7 @@ else:
 
 # OUTFILES_iPCR = [os.path.join(OUTDIR, config["iPCR"]["OUTDIR"], "iPCR"+e) for e in (EXT+EXTFLAT)]
 # OUTFILES_iPCR = expand(os.path.join(iPCR_OUTDIR, "iPCR_{c}{e}"), c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
-OUTFILES_iPCR = expand(os.path.join(config{"OUTDIR"], "coverage","iPCR", "iPCR_{c}{e}"), c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
+OUTFILES_iPCR = expand(os.path.join(config["OUTDIR"], "coverage","iPCR", "iPCR_{c}{e}"), c=CHR_TARGET+CHR_AVAIL, e=EXT+EXTFLAT)
 if OUTFILES_iPCR is None:
   OUTFILES_iPCR=[]
 # OUTFILES      = OUTFILES_cDNA + OUTFILES_plDNA + OUTFILES_iPCR
@@ -94,7 +94,8 @@ rule bed2coverage:
 
 rule _bed2coverage_chr:
   input:
-    os.path.join(OUTDIR, "SuRE-counts_{c}.txt.gz")
+    # os.path.join(OUTDIR, "SuRE-counts_{c}.txt.gz")
+    expand(os.path.join(config["OUTDIR"], "count_tables", "11_sorted", "{ass}", "{{c}}.bedpe.gz"), ass=['paternal','maternal','equal']) 
   output:
     all="{type}/{sample}/{sample}_{c}.cov.bw",
     plus="{type}/{sample}/{sample}_{c}.cov.plus.bw",
@@ -109,7 +110,7 @@ rule _bed2coverage_chr:
   conda: CONDA_ENV
   shell:
     " export BED2COVERAGE_EXE={CODE_BASE_BED2COV}'bed2coverage' ; "
-    " {BED2COVERAGE} {input} {output.all} {output.plus} {output.minus} {params.s} {CHROMSIZES} ; "
+    " {BED2COVERAGE} -a {output.all} -p {output.plus} -m {output.minus} -c {params.s} -s {CHROMSIZES} {input} ; "
 
 rule _bed2coverage:
   input:
