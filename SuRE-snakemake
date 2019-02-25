@@ -180,9 +180,9 @@ rule reversed_liftover:
 rule sorted_cnt_tbls:
   input: expand(os.path.join(config["OUTDIR"], "count_tables", "11_sorted", "{ass}", "{c}.bedpe.gz"), c=config["CHR_TARGET"], ass=['paternal','maternal','equal','ambiguous']) 
 
-# rule bed2coverage:
-#   input:
-#     "bed2coverage.done"
+rule bed2coverage_done:
+  input:
+    "bed2coverage.done"
 
 rule QA:
   input:
