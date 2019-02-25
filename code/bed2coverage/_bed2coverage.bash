@@ -22,26 +22,56 @@ trap 'rm -rf ${tempdir}' EXIT INT TERM HUP
 waitfifo="${tempdir}/pipe"
 mkfifo "${waitfifo}"
 
-zcat ${INPUT} |\
+zcat ${INPUT} | awk -v col="${COLUMN}" ' 
+                  BEGIN { OFS="\t"; FS="\t";
+		  NR==1 { for (i=1; i<=NF; i++) {
+		    switch ($i) {
+		      case "chrom":
+		        chr=i
+		        break
+		      case "start_hg19":
+                        start=i
+		        break
+		      case "end_hg19":
+		        end=i
+		        break
+                      case "strand":
+		        strand=i
+		        break
+		      case col:
+		        col=i
+		        break
+		      default:
+		        break
+		      }
+		      next
+		    }
+		    # rewrite chromosome names to hg19 format
+		    # (eg 4_paternal -> chr4, 17_maternal -> chr17)
+		    chr = gensub("(.*)_[pm]aternal","chr\\1","g",$chr)
+		  }
+		  {
+		    if( $start>0 && $end>0) {print chr, $start, $end, $strand, $col}
+		  } '|\
   tee >( { 
-         awk -v col="${COLUMN}" '
-           BEGIN { OFS="\t"; FS="\t"}
-           NR==1 { for (i=1; i<=NF; i++) { if($i==col) { col=i; break; } }; next }
-	   { print $1, $2, $3, $col ; }' |\
+         awk '
+           BEGIN { OFS="\t"; FS="\t" }
+           NR==1 { next }
+	   { print $1, $2, $3, $5 ; }' |\
 	 tee >( awk 'BEGIN{OFS="\t"; FS="\t"} $4>0{$4=1} 1' | ${BED2COVERAGE_EXE} > "flat.${tmpfileall}" ; : >${waitfifo} ) |\
          ${BED2COVERAGE_EXE} > $tmpfileall; : >${waitfifo}
        } ) \
-      >( { awk -v col="${COLUMN}" '
-           BEGIN { OFS="\t"; FS="\t"}
-           NR==1 { for (i=1; i<=NF; i++) { if($i==col) { col=i; break; } }; next }
-                 { print $1, $2, $3, ($4=="-"?$col:0) };' |\
+      >( { awk '
+           BEGIN { OFS="\t"; FS="\t" }
+           NR==1 { next }
+           { print $1, $2, $3, ($4=="-"?$5:0) };' |\
 	 tee >( awk 'BEGIN{OFS="\t"; FS="\t"} $4>0{$4=1} 1' | ${BED2COVERAGE_EXE} > "flat.${tmpfileminus}" ; : >${waitfifo} ) |\
 	 ${BED2COVERAGE_EXE} > $tmpfileminus; : >${waitfifo}
        } ) \
-      >( { awk -v col="${COLUMN}" '
-	   BEGIN { OFS="\t"; FS="\t"}
-	   NR==1 { for (i=1; i<=NF; i++) { if($i==col) { col=i; break; } }; next }
-	         { print $1, $2, $3, ($4=="+"?$col:0) };' |\
+      >( { awk '
+           BEGIN { OFS="\t"; FS="\t" }
+           NR==1 { next }
+           { print $1, $2, $3, ($4=="+"?$5:0) };' |\
 	 tee >( awk 'BEGIN{OFS="\t"; FS="\t"} $4>0{$4=1} 1' | ${BED2COVERAGE_EXE} > "flat.${tmpfileplus}" ; : >${waitfifo} ) |\
 	 ${BED2COVERAGE_EXE} > $tmpfileplus; : >${waitfifo}
        } ) > /dev/null
