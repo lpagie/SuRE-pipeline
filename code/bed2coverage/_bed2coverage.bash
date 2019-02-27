@@ -85,7 +85,7 @@ zcat $INPUT | awk -v col="${COLUMN}" '
 		    if( $start>0 && $end>0) {
 		      print chr, $start, $end, $strand, $col}
 		    next
-		  } 
+		  } ' |\
   tee >( { 
          awk '
            BEGIN { OFS="\t"; FS="\t" }
