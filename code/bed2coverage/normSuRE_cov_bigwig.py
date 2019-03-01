@@ -1,1 +1,1 @@
-normSuRE-cov-bigwig.py
+../normSuRE_cov_bigwig.py
