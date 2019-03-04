@@ -263,8 +263,8 @@ def annotate_fragment(r1, r2, vcf, patmat):
     snps = vcf.find(r1.reference_start, r2.reference_end-1) # reference_end gives "one past the last aligned residue" but is also 0-based (pysam manual). Nevertheless I found I need the 'end-1' anyway, not to include SNPs beyond the end of the alignment
     snp_annot = []
     # check SNP base/sequence identity
-    if len(snps) is 0:
-        return
+#    if len(snps) is 0:
+#        return snp_annot
     for s in snps:
         if s.value.is_snp:
             snp_annot.append(annotate_snp(s.value, r1, r2, patmat))
@@ -302,7 +302,7 @@ def _stringify_fragment(r1, r2, snp_annot):
     md2 = str(r2.get_tag('MD') if 'MD' in [e[0] for e in r2.get_tags()] else '')
     cigar1 = r1.cigarstring or ''
     cigar2 = r2.cigarstring or ''
-    if None is not snp_annot:
+    if len(snp_annot)>0 and None is not snp_annot:
         snp_abs_pos = _stringify([pos  for annot in snp_annot for pos in [annot[5]]*len(annot[2])])
         snp_rel_pos = _stringify([pos  for annot in snp_annot for pos in [annot[0]]*len(annot[2])])
         snp_ID      = _stringify([ID   for annot in snp_annot for ID  in [annot[1]]*len(annot[2])])
