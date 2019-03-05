@@ -369,7 +369,7 @@ rule iPCR_bam2bedpe:
     patmat="maternal" if "{ass}" == "maternal" else "paternal"
   conda: CONDA_ENV
   resources:
-    ram=40
+    ram=20
   shell:
     "python {iPCR_bam2bedpe_script} -b {input.bam}  -v {input.vcf} -o {output.bedpe} -p '{params.patmat}' -l {log}; "
 
