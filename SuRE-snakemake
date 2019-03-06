@@ -418,7 +418,7 @@ rule iPCR_merge_bedpe:
     bedpe = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz")
   log: os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.log")
   resources:
-    ram=40
+    ram=60
   threads: 4
   shell:
     "{R} {iPCR_merge_bedpe_smpls} {output.bedpe} {log} {input}"
