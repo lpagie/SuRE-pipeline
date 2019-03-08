@@ -132,7 +132,7 @@ rule merge_coverage_chrs_cdna:
   output:
     os.path.join(config["OUTDIR"],"coverage", "cDNA", "{s}", "{s}{e}.bw")
   resources:
-    ram=35
+    ram=64
   conda: CONDA_ENV
   shell:
     "python {MERGE_COVERAGE_CHRS} --inbw {input} --outfname {output}"
@@ -147,7 +147,7 @@ rule merge_coverage_chrs_ipcr:
   output:
     os.path.join(config["OUTDIR"],"coverage", "iPCR", "iPCR{e}.bw")
   resources:
-    ram=35
+    ram=64
   conda: CONDA_ENV
   shell:
     # "# merge iPCR coverage files over all chromosomes"
