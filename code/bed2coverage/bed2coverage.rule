@@ -165,7 +165,7 @@ rule coverage2norm:
   output:
     os.path.join(config["OUTDIR"],"coverage", "cDNA", "{s}", "{s}.norm{e}.bw")
   resources:
-    ram=35
+    ram=89
   conda: CONDA_ENV
   shell:
     # "# norm cDNA sample based on iPCR sample"
