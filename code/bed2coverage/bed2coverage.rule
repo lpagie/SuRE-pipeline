@@ -183,7 +183,7 @@ rule merge_replicate_bw:
   output:
     os.path.join(config["OUTDIR"],"coverage", "{r}{e}")
   resources:
-    ram=35
+    ram=79
   params:
     chrs=["\"chr"+str(c)+"\"" for c in config["CHR_TARGET"]]
   shell:
