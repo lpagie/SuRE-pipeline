@@ -282,7 +282,7 @@ rule iPCR_assign_parent:
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}","03_assigned"),
     basename=os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}")
-  threads: 4
+  # threads: 4
   shell:
     "mkdir -p '{params.dir}' ; "
     "python {ASSIGN_PARENT_SCRIPT} --bp {input.paternal} --bm {input.maternal} --basename '{params.basename}' ; "
