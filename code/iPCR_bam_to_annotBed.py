@@ -253,8 +253,11 @@ def annotate_indel(snp, r1, r2, patmat):
     annot = []
 
     if snp.start < r1.reference_start or snp_max_end > r2.reference_end:
-        # snp overlaps fragment boundaries; discard snp completely
-        return None
+        # snp overlaps fragment boundaries; discard snp completely, return annotation indicating SNP cannot be annotated
+        # return None # LP190315; returning None results in the entire fragment being discarded
+        snp_var = -6 # SNP overlaps with fragment boundaries
+        annot = [('.', snp_var, "boundary_ovl")]
+        return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
     elif snp_max_end > r1.reference_end and snp.start < r2.reference_start:
         # snp does not overlap completely with either read; check if homolgous alleles
         if re.match(r'^(.*)\|\1$',snp.samples[0].data.GT): # both parents have same allele
