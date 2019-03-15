@@ -107,7 +107,7 @@ def open_bam(bam_fname):
             print(r1)
             print(r2)
             print(error)
-            print("error opening bam file, read %d pairs" % c)
+            print("error opening bam file (reads not sorted along name, or single reads missing),\n read %d pairs" % c)
             sys.exit()
     return bam
 
