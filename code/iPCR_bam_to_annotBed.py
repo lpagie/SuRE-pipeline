@@ -148,7 +148,7 @@ def annotate_snp(snp, r1, r2, patmat):
             snp_patmat = 'pos deleted in read'
             return (snp_base, snp_var, snp_patmat)
 
-        snp_base = rSNP.query_sequence[rel_pos].upper()
+        snp_base = r.query_sequence[rel_pos]
         try:
             # check if observed base is either reference or alternative (1, 2, etc)
             snp_var = snp.alleles.index(snp_base) # 0: reference, 1..: 1st (2nd, 3rd, etc) allele
@@ -191,7 +191,7 @@ def annotate_snp(snp, r1, r2, patmat):
             ## WHAT IF GENOME IS HAPLOID, AS IN chrX? 
             # In that case length of GT is 1
             if len(snp.samples[0].data.GT)==1:
-                snp_base = snp.alleles[int(snp.samples[0].data.GT)].upper()
+                snp_base = snp.alleles[int(snp.samples[0].data.GT)]
             else:
                 snp_base = iupac(snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='paternal'])], 
                                  snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])])
@@ -221,7 +221,7 @@ def annotate_indel(snp, r1, r2, patmat):
         # SNP overlaps with read 'r'
         snp_var = int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])
         # expect_seq is sequence according to VCF and GT and assigned parent
-        expect_seq = snp.alleles[snp_var].upper()
+        expect_seq = snp.alleles[snp_var]
         # if alignment contains INDELs the read- and genome-positions are not synchronous.
         # In that case the CIGAR string needs to be used to infer corresponding positions
         # if I:D:N:S:P in CIGAR ....
@@ -229,10 +229,10 @@ def annotate_indel(snp, r1, r2, patmat):
             poss =  range(snp.start, snp.start+len(expect_seq))
             aln_pairs = r.get_aligned_pairs(with_seq=True)
             bases = [x[2] for x in aln_pairs if x[1] in poss]
-            obs_seq = ''.join(bases).upper()
+            obs_seq = ''.join(bases)
         else:
             rel_pos = snp.start - r.reference_start # both coord systems are 0-based
-            obs_seq = r.query_sequence[rel_pos:min(rel_pos+len(expect_seq), len(r.query_sequence))].upper()
+            obs_seq = r.query_sequence[rel_pos:min(rel_pos+len(expect_seq), len(r.query_sequence))]
         if obs_seq == expect_seq:
             # snp_var remains the avlue determined by parental assignment
             snp_base = expect_seq
@@ -262,7 +262,7 @@ def annotate_indel(snp, r1, r2, patmat):
     elif snp_max_end > r1.reference_end and snp.start < r2.reference_start:
         # snp does not overlap completely with either read; check if homolgous alleles
         if re.match(r'^(.*)\|\1$',snp.samples[0].data.GT): # both parents have same allele
-            snp_base = snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])].upper()
+            snp_base = snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])]
             snp_var = -2 # base is not fully covered by either of the two reads, but homozygous
         else:
             snp_base = "N"
