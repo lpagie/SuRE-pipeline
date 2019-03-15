@@ -218,8 +218,9 @@ def annotate_snp(snp, r1, r2, patmat):
 
 def annotate_indel(snp, r1, r2, patmat):
     def annotate_indel_in_read(r):
-        # overlap with read 'r'
+        # SNP overlaps with read 'r'
         snp_var = int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])
+        # expect_seq is sequence according to VCF and GT and assigned parent
         expect_seq = snp.alleles[snp_var]
         # if alignment contains INDELs the read- and genome-positions are not synchronous.
         # In that case the CIGAR string needs to be used to infer corresponding positions
@@ -233,7 +234,7 @@ def annotate_indel(snp, r1, r2, patmat):
             rel_pos = snp.start - r.reference_start # both coord systems are 0-based
             obs_seq = r.query_sequence[rel_pos:min(rel_pos+len(expect_seq), len(r.query_sequence))]
         if obs_seq == expect_seq:
-            # snp_var doesn't change
+            # snp_var remains the avlue determined by parental assignment
             snp_base = expect_seq
             snp_patmat = patmat
         else:
