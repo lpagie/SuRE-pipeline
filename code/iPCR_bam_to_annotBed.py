@@ -283,7 +283,8 @@ def annotate_indel(snp, r1, r2, patmat):
 def annotate_fragment(r1, r2, vcf, patmat):
     # find overlapping SNPs
     # sam coordinates are 0-based
-    snps = vcf.find(r1.reference_start, r2.reference_end-1) # reference_end gives "one past the last aligned residue" but is also 0-based (pysam manual). Nevertheless I found I need the 'end-1' anyway, not to include SNPs beyond the end of the alignment
+    # snps = vcf.find(r1.reference_start, r2.reference_end-1) # reference_end gives "one past the last aligned residue" but is also 0-based (pysam manual). Nevertheless I found I need the 'end-1' anyway, not to include SNPs beyond the end of the alignment
+    snps = vcf.find(r1.reference_start, r2.reference_end) # LP190315; should really be using the 'half-open' end coordinate. Together with above changes I assume this should now be the correct expression
     snp_annot = []
     # check SNP base/sequence identity
 #    if len(snps) is 0:
