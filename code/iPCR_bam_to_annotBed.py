@@ -405,6 +405,8 @@ def main(options):
         snp_annot = annotate_fragment(r1, r2, vcf, options.patmat)
         if snp_annot is not None:
             write_fragment(r1, r2, snp_annot, out)
+        #else:
+        #    log(fragment)
     print("processing done")
     out.close()
     print("output closed")
