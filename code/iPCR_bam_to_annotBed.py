@@ -88,8 +88,6 @@ def import_VCF(vcf_fname):
         if _c is '':
             _c = record.CHROM
         assert _c == record.CHROM
-        # insert record in tree if it is an INDEL
-        # if record.is_indel:
         tree.insert_interval(Interval(record.start, record.end, record))
     return(tree)
 
