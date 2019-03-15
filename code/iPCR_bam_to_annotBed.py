@@ -167,7 +167,8 @@ def annotate_snp(snp, r1, r2, patmat):
         return (snp_base, snp_var, snp_patmat)
 
     snp_ID = snp.ID
-    snp_abs_pos = snp.start
+    # snp_abs_pos = snp.start # LP190315; this assignment erroneously assign 0-based coordinate to 1-based VCF data
+    snp_abs_pos = snp.POS
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
     snp_type    = snp.var_type
     snp_subtype = snp.var_subtype
@@ -225,7 +226,8 @@ def annotate_indel(snp, r1, r2, patmat):
         return (snp_base, snp_var, snp_patmat)
 
     snp_ID      = snp.ID
-    snp_abs_pos = snp.start
+    # snp_abs_pos = snp.start # LP190315; this assignment erroneously assign 0-based coordinate to 1-based VCF data
+    snp_abs_pos = snp.POS
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
     snp_max_end = snp.start + max(len(allele) for allele in snp.alleles) 
     snp_type    = snp.var_type
