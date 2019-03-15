@@ -222,17 +222,23 @@ def annotate_indel(snp, r1, r2, patmat):
         snp_var = int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])
         # expect_seq is sequence according to VCF and GT and assigned parent
         expect_seq = snp.alleles[snp_var]
-        # if alignment contains INDELs the read- and genome-positions are not synchronous.
-        # In that case the CIGAR string needs to be used to infer corresponding positions
-        # if I:D:N:S:P in CIGAR ....
-        if re.match(".*[IDNSP].*", r.cigarstring):
-            poss =  range(snp.start, snp.start+len(expect_seq))
-            aln_pairs = r.get_aligned_pairs(with_seq=True)
-            bases = [x[2] for x in aln_pairs if x[1] in poss]
-            obs_seq = ''.join(bases)
-        else:
-            rel_pos = snp.start - r.reference_start # both coord systems are 0-based
-            obs_seq = r.query_sequence[rel_pos:min(rel_pos+len(expect_seq), len(r.query_sequence))]
+        # LP190315: I don't want to know about the bases in the genome
+        # sequence, I want to know the sequence 'observed' in the read
+        # sequence. If the read contains INDELs and such the observation does
+        # not correspond to expectation, more or less by definition.
+#        # if alignment contains INDELs the read- and genome-positions are not synchronous.
+#        # In that case the CIGAR string needs to be used to infer corresponding positions
+#        # if I:D:N:S:P in CIGAR ....
+#        if re.match(".*[IDNSP].*", r.cigarstring):
+#            poss =  range(snp.start, snp.start+len(expect_seq))
+#            aln_pairs = r.get_aligned_pairs(with_seq=True)
+#            bases = [x[2] for x in aln_pairs if x[1] in poss]
+#            obs_seq = ''.join(bases).upper()
+#        else:
+#            # rel_pos = snp.start - r.reference_start # both coord systems are 0-based
+#            # obs_seq = r.query_sequence[rel_pos:min(rel_pos+len(expect_seq), len(r.query_sequence))]
+        rel_pos = snp.start - r.reference_start # both coord systems are 0-based
+        obs_seq = r.query_sequence[rel_pos:rel_pos+len(expect_seq)]
         if obs_seq == expect_seq:
             # snp_var remains the avlue determined by parental assignment
             snp_base = expect_seq
