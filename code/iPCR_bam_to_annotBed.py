@@ -182,8 +182,11 @@ def annotate_snp(snp, r1, r2, patmat):
     snp_subtype = snp.var_subtype
     annot = []
 
-    if snp.POS>r1.reference_end and snp.POS<=r2.reference_start:
-        # snp in between r1 and r2
+    # depending on position and overlap of SNP with fragment and read sequences
+    # construct the SNP annotation
+    # if snp.POS>r1.reference_end and snp.POS<=r2.reference_start: # LP190315; better to work uniformly in 0-based coord system
+    if snp.start>=r1.reference.end and snp.end<=r2.reference.start: # LP190315; use >=, <= because test for non-overlap
+        # snp is in between r1 and r2; use IUPAC annotation
         try: 
             ## WHAT IF GENOME IS HAPLOID, AS IN chrX? 
             # In that case length of GT is 1
@@ -205,7 +208,8 @@ def annotate_snp(snp, r1, r2, patmat):
         # snp overlaps with either one or both reads
         if snp.POS<r1.reference_end:
             annot.append(annotate_snp_in_read(r1))
-        if snp.POS > r2.reference_start:
+        # if snp.POS > r2.reference_start: # LP190415; use 0-based coord system
+        if SNP.end > r2.reference_start:
             annot.append(annotate_snp_in_read(r2))
 
     return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
