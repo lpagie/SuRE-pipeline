@@ -206,7 +206,8 @@ def annotate_snp(snp, r1, r2, patmat):
         annot = [(snp_base, snp_var, snp_patmat)]
     else:
         # snp overlaps with either one or both reads
-        if snp.POS<r1.reference_end:
+        # if snp.POS<r1.reference_end: # LP190415; use 0-based coord system
+        if snp.start < r1.reference.end:
             annot.append(annotate_snp_in_read(r1))
         # if snp.POS > r2.reference_start: # LP190415; use 0-based coord system
         if SNP.end > r2.reference_start:
@@ -266,10 +267,12 @@ def annotate_indel(snp, r1, r2, patmat):
         annot = [(snp_base, snp_var, snp_patmat)]
         return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
     else:
-        if snp_max_end < r1.reference_end:
+        # if snp_max_end < r1.reference_end: # LP190315; both are end-coordinates so use '<=' to test whether SNP-end falls within 'r1'
+        if snp_max_end <= r1.reference_end:
             # snp overlaps completely with read1
             annot.append(annotate_indel_in_read(r1))
-        if snp.start > r2.reference_start:
+        # if snp.start > r2.reference_start: # LP190315; both are (0-based) start-coordinates so use '<=' to test whether SNP-start falls within 'r2'
+        if snp.start >= r2.reference_start:
             # snp overlaps completely with read2
             annot.append(annotate_indel_in_read(r2))
     return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
