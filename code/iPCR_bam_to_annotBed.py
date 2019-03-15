@@ -152,15 +152,23 @@ def annotate_snp(snp, r1, r2, patmat):
         try:
             # check if observed base is either reference or alternative (1, 2, etc)
             snp_var = snp.alleles.index(snp_base) # 0: reference, 1..: 1st (2nd, 3rd, etc) allele
-            if snp_var == int(snp.samples[0].data.GT.split('|')[patmat=='maternal']):
-                # base is what is expected according to parent 'patmat'
-                snp_patmat = patmat
-            elif snp_var == int(snp.samples[0].data.GT.split('|')[patmat!='maternal']):
-                # base is on parental chromosome other than expected
-                snp_patmat = 'maternal_unexpected' if patmat=='paternal' else 'paternal_unexpected'
-            else:
-                # base is known allele but neither of the two parental alleles
-                snp_patmat = "non_paternal_allele"
+            if len(snp.samples[0].data.GT) > 1:
+                if snp_var == int(snp.samples[0].data.GT.split('|')[patmat=='maternal']):
+                    # base is what is expected according to parent 'patmat'
+                    snp_patmat = patmat
+                elif snp_var == int(snp.samples[0].data.GT.split('|')[patmat!='maternal']):
+                    # base is on parental chromosome other than expected
+                    snp_patmat = 'maternal_unexpected' if patmat=='paternal' else 'paternal_unexpected'
+                else:
+                    # base is known allele but neither of the two parental alleles
+                    snp_patmat = "non_paternal_allele"
+            else: # chromosome is haploid
+                if snp_var == int(snp.samples[0].data.GT):
+                    # base is what is expected according to parent 'patmat'
+                    snp_patmat = patmat
+                else:
+                    # base is known allele but neither of the two parental alleles
+                    snp_patmat = "non_paternal_allele"
         except ValueError:
             snp_var = -1 # base is not a known allele
             snp_patmat = "unknown_allele"
@@ -177,8 +185,13 @@ def annotate_snp(snp, r1, r2, patmat):
     if snp.POS>r1.reference_end and snp.POS<=r2.reference_start:
         # snp in between r1 and r2
         try: 
-            snp_base = iupac(snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='paternal'])], 
-                             snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])])
+            ## WHAT IF GENOME IS HAPLOID, AS IN chrX? 
+            # In that case length of GT is 1
+            if len(snp.samples[0].data.GT)==1:
+                snp_base = snp.alleles[int(snp.samples[0].data.GT)]
+            else:
+                snp_base = iupac(snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='paternal'])], 
+                                 snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])])
         except NameError:
             print("error in annotate_snp_in_read with SNP %s" % snp)
             print(snp.alleles)
