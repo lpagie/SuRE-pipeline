@@ -65,7 +65,7 @@ def init(options):
     atexit.register(log_close)
 
 def log(msg):
-    log_out.write("iPCR_bam_to_annotBed.py: %s" % msg)
+    log_out.write("iPCR_bam_to_annotBed.py: %s\n" % msg)
     log_out.flush()
 
 
