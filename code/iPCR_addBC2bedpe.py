@@ -68,7 +68,8 @@ def import_barcodes(info_fname, log, stats):
     barcodes = pandas.read_table(info_fname, sep="\t", header=None, usecols=[0,4], names=['readID','BC'])
     # trim readID to make format compatible with bedpe file
     # barcodes['readID'] = barcodes['readID'].str.extract(r'^(.*) .*$', expand=False) # LP190320; this match fails if there is no white spec in readID at all
-    barcodes['readID'] = barcodes['readID'].str.extract(r'^(\S+).*$', expand=False)
+    # barcodes['readID'] = barcodes['readID'].str.extract(r'^(\S+).*$', expand=False) # LP190320; found that I need to be able to trim "/1" and "/2" from readID
+    barcodes['readID'] = barcodes['readID'].str.extract(r'^(\S+?)(?:/[12])?(?:\s.*)?$', expand=False) # match (1) non-space string (non-greedy) (2) possible "/1,/1" (3) possible space plus rest of string
     # extract a table of barcode lengths from pandas column
     BClen_tbl = [len_count for len_count in barcodes['BC'].str.len().value_counts().sort_index().items()]
     # extract a table of number of N's in barcode from pandas column
