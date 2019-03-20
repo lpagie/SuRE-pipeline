@@ -67,7 +67,8 @@ def import_barcodes(info_fname, log, stats):
     # open info file, store in pandas data frame
     barcodes = pandas.read_table(info_fname, sep="\t", header=None, usecols=[0,4], names=['readID','BC'])
     # trim readID to make format compatible with bedpe file
-    barcodes['readID'] = barcodes['readID'].str.extract(r'^(.*) .*$', expand=False)
+    # barcodes['readID'] = barcodes['readID'].str.extract(r'^(.*) .*$', expand=False) # LP190320; this match fails if there is no white spec in readID at all
+    barcodes['readID'] = barcodes['readID'].str.extract(r'^(\S+).*$', expand=False)
     # extract a table of barcode lengths from pandas column
     BClen_tbl = [len_count for len_count in barcodes['BC'].str.len().value_counts().sort_index().items()]
     # extract a table of number of N's in barcode from pandas column
