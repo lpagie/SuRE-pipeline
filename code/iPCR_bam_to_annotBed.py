@@ -99,11 +99,12 @@ def open_bam(bam_fname):
     # check whether bam is name sorted
     head = bam.head(100)
     c = 0
+    regex = re.compile(r'\s.*$')
     for r1 in head:
         r2 = next (head)
         c += 1
         try:
-            assert r1.query_name == r2.query_name
+            assert regex.sub('',r1.query_name) == regex.sub('',r2.query_name)
         except AssertionError as error:
             print(r1)
             print(r2)
