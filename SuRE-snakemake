@@ -366,7 +366,8 @@ rule iPCR_bam2bedpe:
   log:
     os.path.join("{path}", "{smpl}", "06_bedpe", "{ass}", "{smpl}_{c}.log")
   params:
-    patmat="maternal" if "{ass}" == "maternal" else "paternal"
+    #patmat="maternal" if "{ass}" == "maternal" else "paternal"
+    patmat=lambda wildcards: "maternal" if wildcards.ass == "maternal" else "paternal"
   conda: CONDA_ENV
   resources:
     ram=40
