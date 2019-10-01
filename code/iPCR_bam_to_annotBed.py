@@ -154,6 +154,11 @@ def annotate_snp(snp, r1, r2, patmat):
         try:
             # check if observed base is either reference or alternative (1, 2, etc)
             snp_var = snp.alleles.index(snp_base) # 0: reference, 1..: 1st (2nd, 3rd, etc) allele
+        except ValueError:
+            snp_var = -1 # base is not a known allele
+            snp_patmat = "unknown_allele"
+
+        try:
             if snp_var == int(snp.samples[0].data.GT.split('|')[patmat=='maternal']):
                 # base is what is expected according to parent 'patmat'
                 snp_patmat = patmat
@@ -163,9 +168,11 @@ def annotate_snp(snp, r1, r2, patmat):
             else:
                 # base is known allele but neither of the two parental alleles
                 snp_patmat = "non_paternal_allele"
-        except ValueError:
-            snp_var = -1 # base is not a known allele
-            snp_patmat = "unknown_allele"
+        except IndexError as indexerror:
+            print(snp)
+            print(indexerror)
+            sys.exit()
+
         return (snp_base, snp_var, snp_patmat)
 
     snp_ID = snp.ID
