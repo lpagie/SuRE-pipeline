@@ -159,19 +159,25 @@ def annotate_snp(snp, r1, r2, patmat):
             snp_patmat = "unknown_allele"
 
         try:
-            if snp_var == int(snp.samples[0].data.GT.split('|')[patmat=='maternal']):
-                # base is what is expected according to parent 'patmat'
-                snp_patmat = patmat
-            elif snp_var == int(snp.samples[0].data.GT.split('|')[patmat!='maternal']):
-                # base is on parental chromosome other than expected
-                snp_patmat = 'maternal_unexpected' if patmat=='paternal' else 'paternal_unexpected'
+            gt=snp.samples[0].data.GT
+            if "|" in gt:
+                gt=gt.split('|')
             else:
-                # base is known allele but neither of the two parental alleles
-                snp_patmat = "non_paternal_allele"
+                gt=[gt,gt]
         except IndexError as indexerror:
             print(snp)
             print(indexerror)
             sys.exit()
+
+        if snp_var == int(gt[patmat=='maternal']):
+            # base is what is expected according to parent 'patmat'
+            snp_patmat = patmat
+        elif snp_var == int(gt[patmat!='maternal']):
+            # base is on parental chromosome other than expected
+            snp_patmat = 'maternal_unexpected' if patmat=='paternal' else 'paternal_unexpected'
+        else:
+            # base is known allele but neither of the two parental alleles
+            snp_patmat = "non_paternal_allele"
 
         return (snp_base, snp_var, snp_patmat)
 
@@ -184,9 +190,19 @@ def annotate_snp(snp, r1, r2, patmat):
 
     if snp.POS>r1.reference_end and snp.POS<=r2.reference_start:
         # snp in between r1 and r2
+        try:
+            gt=snp.samples[0].data.GT
+            if "|" in gt:
+                gt=gt.split('|')
+            else:
+                gt=[gt,gt]
+        except IndexError as indexerror:
+            print(snp)
+            print(indexerror)
+            sys.exit()
+
         try: 
-            snp_base = iupac(snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='paternal'])], 
-                             snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])])
+            snp_base = iupac(snp.alleles[0], snp.alleles[1])
         except NameError:
             print("error in annotate_snp_in_read with SNP %s" % snp)
             print(snp.alleles)
