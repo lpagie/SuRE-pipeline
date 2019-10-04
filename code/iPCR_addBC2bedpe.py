@@ -60,7 +60,10 @@ def open_stats(stats_fname, log):
 
 def import_bedpe(bedpe_fname, log, stats):
     log.write("iPCR_addBC2bedpe.py: opening bedpe %s for input\n" % bedpe_fname)
-    return pandas.read_table(bedpe_fname,header=0)
+    bedpe = pandas.read_table(bedpe_fname,header=0)
+    bedpe['readID'] = bedpe['readID'].str.extract(r'^(\S+?)(?:/[12])?(?:\s.*)?$', expand=False) # match (1) non-space string (non-greedy) (2) possible "/1,/1" (3) possible space plus rest of string
+    return bedpe
+    # return pandas.read_table(bedpe_fname,header=0) # LP190326; Need to trim the readID before returning
 
 def import_barcodes(info_fname, log, stats):
     log.write("iPCR_addBC2bedpe.py: opening info %s for input\n" % info_fname)
