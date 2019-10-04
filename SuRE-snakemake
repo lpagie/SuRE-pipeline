@@ -153,6 +153,9 @@ def bedpe_BC_maternal_input(wildcards):
            c=config["CHR_TARGET"],
            ass=['maternal']) 
 
+rule trim_iPCR:
+  input: expand(os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.info.gz"), s=config["iPCR"]["SAMPLES"].keys())
+
 rule bedpe_BC_equal:
   input: bedpe_BC_equal_input
 
