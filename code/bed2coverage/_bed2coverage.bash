@@ -74,7 +74,7 @@ zcat $INPUT | awk -v col="${COLUMN}" '
 		    if (col=="iPCR") { col="count" }
 		    # the column names in the SuRE-counts files miss the "-T1"
 		    # extension, so I need to remove that here as well.
-		    col=headers[gensub("-T1","",1,col)]
+		    col=headers[gensub("[-_]T1","",1,col)]
 		    next
 		  }
 		  NR==2 {
@@ -85,7 +85,7 @@ zcat $INPUT | awk -v col="${COLUMN}" '
 		    if( $start>0 && $end>0) {
 		      print chr, $start, $end, $strand, $col}
 		    next
-		  } 
+		  } ' |\
   tee >( { 
          awk '
            BEGIN { OFS="\t"; FS="\t" }

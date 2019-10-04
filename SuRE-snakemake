@@ -282,7 +282,7 @@ rule iPCR_assign_parent:
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}","03_assigned"),
     basename=os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}")
-  threads: 4
+  # threads: 4
   shell:
     "mkdir -p '{params.dir}' ; "
     "python {ASSIGN_PARENT_SCRIPT} --bp {input.paternal} --bm {input.maternal} --basename '{params.basename}' ; "
@@ -300,7 +300,7 @@ rule iPCR_coordsort_bam:
   threads: 4
   conda: CONDA_ENV
   resources:
-    ram=40
+    ram=60
   shell:
     "samtools sort -o {output.bam} -@ {threads} -m 20G -T {output.bam} {input} ; "
     "samtools index {output.bam} ; "
@@ -370,7 +370,7 @@ rule iPCR_bam2bedpe:
     patmat=lambda wildcards: "maternal" if wildcards.ass == "maternal" else "paternal"
   conda: CONDA_ENV
   resources:
-    ram=40
+    ram=20
   shell:
     "python {iPCR_bam2bedpe_script} -b {input.bam}  -v {input.vcf} -o {output.bedpe} -p '{params.patmat}' -l {log}; "
 
@@ -419,7 +419,7 @@ rule iPCR_merge_bedpe:
     bedpe = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz")
   log: os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.log")
   resources:
-    ram=40
+    ram=60
   threads: 4
   shell:
     "{R} {iPCR_merge_bedpe_smpls} {output.bedpe} {log} {input}"

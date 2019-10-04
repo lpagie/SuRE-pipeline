@@ -82,9 +82,9 @@ bedpe <- fread(input.bedpe, nrow=-10,key='BC')
 log("reading cdna input")
 for (f in input.cdna) {
   if (nrow(bedpe)>0)
-    bedpe <- merge(bedpe, fread(f, header=F, nrow=-100000, nThread=1, col.names=c(sub('-T1_trimmed_table.txt.gz','',basename(f)),'BC'),key='BC'), all.x=TRUE)
+    bedpe <- merge(bedpe, fread(f, header=F, nrow=-100000, nThread=1, col.names=c(sub('[_-]T1_trimmed_table.txt.gz','',basename(f)),'BC'),key='BC'), all.x=TRUE)
   else
-    bedpe[[sub('-T1_trimmed_table.txt.gz','',basename(f))]]=integer()
+    bedpe[[sub('[_-]T1_trimmed_table.txt.gz','',basename(f))]]=integer()
 }
 # set all counts not observed in cDNA data to 0
 bedpe[is.na(bedpe)] <- 0

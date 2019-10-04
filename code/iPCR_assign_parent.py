@@ -81,8 +81,8 @@ def classify_parent(rpf,rmf,rpr,rmr):
         return ('discord',{'forw':rpf,'rev':rpr})
     # if MAPQ < (?) 40 return lowQ
     mapq = [r.mapping_quality for r in (rpf,rmf,rpr,rmr)]
-    if max(min(mapq[0],mapq[2]),min(mapq[1],mapq[3])) < min_mapq:
-        return ('lowQ',{'forw':rpf,'rev':rpr})
+    # if max(min(mapq[0],mapq[2]),min(mapq[1],mapq[3])) < min_mapq:
+    #     return ('lowQ',{'forw':rpf,'rev':rpr})
 
     # if both pairs are not concordant, return 'noCP'
     if (not((rpf.get_tag('YT')=='CP') or (rmf.get_tag('YT')=='CP'))):
@@ -95,12 +95,12 @@ def classify_parent(rpf,rmf,rpr,rmr):
         else:
             return('maternal',{'forw':rmf,'rev':rmr})
 
-    # MAPQ: select pair with higher MAPQ, or continue
-    if (mapq[0] != mapq[1]):
-        if ((mapq[0]-mapq[1]) > 0):
-            return('paternal',{'forw':rpf,'rev':rpr})
-        else:
-            return('maternal',{'forw':rmf,'rev':rmr})
+#    # MAPQ: select pair with higher MAPQ, or continue
+#    if (mapq[0] != mapq[1]):
+#        if ((mapq[0]-mapq[1]) > 0):
+#            return('paternal',{'forw':rpf,'rev':rpr})
+#        else:
+#            return('maternal',{'forw':rmf,'rev':rmr})
 
     # AS: select pair if both aln scores are equal or higher, or continue
     try:
@@ -113,6 +113,12 @@ def classify_parent(rpf,rmf,rpr,rmr):
 
     # if ASdiff are equal values -> ambiguous
     if (AS[0]==AS[1]) & (AS[2]==AS[3]):
+        # MAPQ: select pair with higher MAPQ, or continue
+        if (mapq[0] != mapq[1]):
+            if ((mapq[0]-mapq[1]) > 0):
+                return('paternal',{'forw':rpf,'rev':rpr})
+            else:
+                return('maternal',{'forw':rmf,'rev':rmr})
         return('equal',{'forw':rpf,'rev':rpr})
     ASdiff = [AS[0]-AS[1], AS[2]-AS[3]]
     # if ASdiff has opposite sign -> ambiguous
@@ -132,13 +138,20 @@ def classify_parent(rpf,rmf,rpr,rmr):
 def classify_reads(ibam, obam):
     reads = zip(ibam['paternal'].fetch(until_eof=True),
                 ibam['maternal'].fetch(until_eof=True))
+    classes = {}
     for rpf, rmf in reads:
         rpr, rmr = next(reads)
         read_class,read = classify_parent(rpf,rmf,rpr,rmr)
+        if read_class in classes.keys():
+            classes[read_class] += 1
+        else:
+            classes[read_class] = 1
         if (read_class in ['paternal', 'maternal', 'equal', 'ambiguous']):
             # if (read_class=='paternal' or read_class=='maternal'):
             obam[read_class].write(read['forw'])
             obam[read_class].write(read['rev'])
+    for k in classes.keys():
+        print ("readclass '%s' has count %d" % (k, classes[k]))
 
 def main(options):
     # open input bam files
