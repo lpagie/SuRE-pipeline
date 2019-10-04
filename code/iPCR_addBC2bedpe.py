@@ -65,17 +65,31 @@ def import_bedpe(bedpe_fname, log, stats):
 def import_barcodes(info_fname, log, stats):
     log.write("iPCR_addBC2bedpe.py: opening info %s for input\n" % info_fname)
     # open info file, store in pandas data frame
-    barcodes = pandas.read_table(info_fname, sep="\t", header=None, usecols=[0,4], names=['readID','BC'])
+    # info file contains '-1' in 2nd column if read was not parsed
+    # pandas.read_table doesn't handle this correctly if it occurs on the first line
+    # first find first line in info file which does not contain a '-1' in 2nd column
+    nskip=0
+    with gzip.open(info_fname,'rt') as f:
+        for line in f:
+            if line.split("\t")[1]=="-1":
+                nskip=nskip+1
+            else:
+                break
+    log.write("iPCR_addBC2bedpe.py: skipping from info input file = %s\n" % str(nskip))
+    barcodes = pandas.read_table(info_fname, sep="\t", header=None, usecols=[0,4], names=['readID','BC'], skiprows=nskip)
     # trim readID to make format compatible with bedpe file
     # barcodes['readID'] = barcodes['readID'].str.extract(r'^(.*) .*$', expand=False) # LP190320; this match fails if there is no white spec in readID at all
     # barcodes['readID'] = barcodes['readID'].str.extract(r'^(\S+).*$', expand=False) # LP190320; found that I need to be able to trim "/1" and "/2" from readID
     barcodes['readID'] = barcodes['readID'].str.extract(r'^(\S+?)(?:/[12])?(?:\s.*)?$', expand=False) # match (1) non-space string (non-greedy) (2) possible "/1,/1" (3) possible space plus rest of string
+    log.write("iPCR_addBC2bedpe.py: from info file after rewriting 'readID':\n %s\n" % barcodes.head())
     # extract a table of barcode lengths from pandas column
     BClen_tbl = [len_count for len_count in barcodes['BC'].str.len().value_counts().sort_index().items()]
     # extract a table of number of N's in barcode from pandas column
     BCN_tbl = [NNN_count for NNN_count in barcodes['BC'].str.count('N').value_counts().sort_index().items()]
     tot = len(barcodes.index) # total number of barcodes items
     idx = (~barcodes['BC'].isnull()) & (barcodes['BC'].str.len() == 20) & ~barcodes['BC'].str.contains('N', na=False)
+    log.write("iPCR_addBC2bedpe.py: length index: %s\n" % str(len(idx)))
+    log.write("iPCR_addBC2bedpe.py: index: %s\n" % str(idx.value_counts()))
     incl = idx.value_counts()[True]
     excl = idx.value_counts()[False]
 
