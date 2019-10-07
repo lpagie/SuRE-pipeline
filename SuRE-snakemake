@@ -243,8 +243,8 @@ rule iPCR_map_bowtie2_paired_end:
   # output: single bam file with alignments for *all* reads, sorted long readID
   # note: bowtie2 index file selected based on config, genomeID, and parent
   input:
-    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.fastq.gz"),
-    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_rev.fastq.gz")
+    ancient(os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.fastq.gz")),
+    ancient(os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_rev.fastq.gz"))
   output:
     os.path.join(iPCR_OUTDIR,"{s}","02_mapped","{s}_{p}.bam")
   params:
