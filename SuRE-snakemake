@@ -298,8 +298,8 @@ rule iPCR_coordsort_bam:
   input:
     os.path.join("{path}","{smpl}","03_assigned","{smpl}_{assign}.bam")
   output:
-    bam=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam")),
-    bai=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam.bai"))
+    bam=os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam"),
+    bai=os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam.bai")
   threads: 4
   conda: CONDA_ENV
   resources:
