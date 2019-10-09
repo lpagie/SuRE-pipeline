@@ -223,25 +223,20 @@ def annotate_snp(snp, r1, r2, patmat):
 
 def annotate_indel(snp, r1, r2, patmat):
     def annotate_indel_in_read(r):
+        gt=snp.samples[0].data.GT
         # SNP overlaps with read 'r'
-        snp_var = int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])
+        gt=snp.samples[0].data.GT
+        if len(gt) > 1: # chromosome is diploid
+            gt=re.split("[\|/\\\]",gt)
+            snp_var = int(gt[patmat=='maternal'])
+        else: # chromosome is haploid
+            snp_var = int(gt)
         # expect_seq is sequence according to VCF and GT and assigned parent
         expect_seq = snp.alleles[snp_var]
         # LP190315: I don't want to know about the bases in the genome
         # sequence, I want to know the sequence 'observed' in the read
         # sequence. If the read contains INDELs and such the observation does
         # not correspond to expectation, more or less by definition.
-#        # if alignment contains INDELs the read- and genome-positions are not synchronous.
-#        # In that case the CIGAR string needs to be used to infer corresponding positions
-#        # if I:D:N:S:P in CIGAR ....
-#        if re.match(".*[IDNSP].*", r.cigarstring):
-#            poss =  range(snp.start, snp.start+len(expect_seq))
-#            aln_pairs = r.get_aligned_pairs(with_seq=True)
-#            bases = [x[2] for x in aln_pairs if x[1] in poss]
-#            obs_seq = ''.join(bases).upper()
-#        else:
-#            # rel_pos = snp.start - r.reference_start # both coord systems are 0-based
-#            # obs_seq = r.query_sequence[rel_pos:min(rel_pos+len(expect_seq), len(r.query_sequence))]
         rel_pos = snp.start - r.reference_start # both coord systems are 0-based
         obs_seq = r.query_sequence[rel_pos:rel_pos+len(expect_seq)]
         if obs_seq == expect_seq:
@@ -252,7 +247,7 @@ def annotate_indel(snp, r1, r2, patmat):
             snp_var = -3 # observed sequence differs from expected sequence, unclear whether observed is another allele or sequencing error or something else
             snp_patmat = "unexpected"
             snp_base = obs_seq
-
+    
         return (snp_base, snp_var, snp_patmat)
 
     snp_ID      = snp.ID
@@ -266,7 +261,6 @@ def annotate_indel(snp, r1, r2, patmat):
 
     if snp.start < r1.reference_start or snp_max_end > r2.reference_end:
         # snp overlaps fragment boundaries; discard snp completely, return annotation indicating SNP cannot be annotated
-        # return None # LP190315; returning None results in the entire fragment being discarded
         snp_var = -6 # SNP overlaps with fragment boundaries
         annot = [('.', snp_var, "boundary_ovl")]
         return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
