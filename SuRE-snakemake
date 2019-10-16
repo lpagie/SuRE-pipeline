@@ -114,7 +114,7 @@ include: os.path.join(CODE_BASE, "bed2coverage/bed2coverage.rule")
 
 rule all:
   input:
-    cDNA_TARGETS, plDNA_TARGETS, iPCR_TARGETS,
+#    cDNA_TARGETS, plDNA_TARGETS, iPCR_TARGETS,
     "bed2coverage.done"
 #    "QA.done"
 
@@ -152,6 +152,9 @@ def bedpe_BC_maternal_input(wildcards):
            s=config["iPCR"]["SAMPLES"].keys(), 
            c=config["CHR_TARGET"],
            ass=['maternal']) 
+
+rule trim_iPCR:
+  input: expand(os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.info.gz"), s=config["iPCR"]["SAMPLES"].keys())
 
 rule bedpe_BC_equal:
   input: bedpe_BC_equal_input
@@ -240,8 +243,8 @@ rule iPCR_map_bowtie2_paired_end:
   # output: single bam file with alignments for *all* reads, sorted long readID
   # note: bowtie2 index file selected based on config, genomeID, and parent
   input:
-    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.fastq.gz"),
-    os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_rev.fastq.gz")
+    ancient(os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_forw.fastq.gz")),
+    ancient(os.path.join(iPCR_OUTDIR,"{s}","01_fastq_trimmed","{s}_rev.fastq.gz"))
   output:
     os.path.join(iPCR_OUTDIR,"{s}","02_mapped","{s}_{p}.bam")
   params:
@@ -282,7 +285,7 @@ rule iPCR_assign_parent:
   params:
     dir=os.path.join(iPCR_OUTDIR,"{s}","03_assigned"),
     basename=os.path.join(iPCR_OUTDIR,"{s}","03_assigned","{s}")
-  threads: 4
+  # threads: 4
   shell:
     "mkdir -p '{params.dir}' ; "
     "python {ASSIGN_PARENT_SCRIPT} --bp {input.paternal} --bm {input.maternal} --basename '{params.basename}' ; "
@@ -295,12 +298,12 @@ rule iPCR_coordsort_bam:
   input:
     os.path.join("{path}","{smpl}","03_assigned","{smpl}_{assign}.bam")
   output:
-    bam=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam")),
-    bai=temp(os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam.bai"))
+    bam=os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam"),
+    bai=os.path.join("{path}","{smpl}","04_sort_after_assign","{smpl}_{assign}.bam.bai")
   threads: 4
   conda: CONDA_ENV
   resources:
-    ram=40
+    ram=60
   shell:
     "samtools sort -o {output.bam} -@ {threads} -m 20G -T {output.bam} {input} ; "
     "samtools index {output.bam} ; "
@@ -366,10 +369,11 @@ rule iPCR_bam2bedpe:
   log:
     os.path.join("{path}", "{smpl}", "06_bedpe", "{ass}", "{smpl}_{c}.log")
   params:
-    patmat="maternal" if "{ass}" == "maternal" else "paternal"
+    #patmat="maternal" if "{ass}" == "maternal" else "paternal"
+    patmat=lambda wildcards: "maternal" if wildcards.ass == "maternal" else "paternal"
   conda: CONDA_ENV
   resources:
-    ram=40
+    ram=20
   shell:
     "python {iPCR_bam2bedpe_script} -b {input.bam}  -v {input.vcf} -o {output.bedpe} -p '{params.patmat}' -l {log}; "
 
@@ -418,7 +422,7 @@ rule iPCR_merge_bedpe:
     bedpe = os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.bedpe.gz")
   log: os.path.join("{path}", "samples_merged", "08_bedpe_merged", "{ass}", "{c}.log")
   resources:
-    ram=40
+    ram=60
   threads: 4
   shell:
     "{R} {iPCR_merge_bedpe_smpls} {output.bedpe} {log} {input}"

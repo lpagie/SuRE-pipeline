@@ -46,9 +46,12 @@ from collections import ChainMap
 
 CODE_BASE_BED2COV=os.path.join(CODE_BASE, "bed2coverage/")
 
-BED2COVERAGE = os.path.join(CODE_BASE_BED2COV, "_bed2coverage.bash")
+BED2COVERAGE        = os.path.join(CODE_BASE_BED2COV, "_bed2coverage.bash")
+MERGE_COVERAGE_CHRS = os.path.join(CODE_BASE_BED2COV, "merge-bigwig.py")
+COVERAGE2NORM       = os.path.join(CODE_BASE_BED2COV, "normSuRE_cov_bigwig.py")
+MERGE_REPLICATE_BW  = os.path.join(CODE_BASE_BED2COV, "addBigwigsScale.py")
 
-# iPCR_TARGETS=expand(os.path.join(OUTDIR, "SuRE-counts_{c}.txt.gz"), c=CHR_TARGET+CHR_AVAIL)
+# a iPCR_TARGETS=expand(os.path.join(OUTDIR, "SuRE-counts_{c}.txt.gz"), c=CHR_TARGET+CHR_AVAIL)
 
 OUTDIR=config["OUTDIR"]
 ASSEMBLY=config["ASSEMBLY"]
@@ -78,6 +81,12 @@ if OUTFILES_iPCR is None:
 OUTFILES      = OUTFILES_cDNA + OUTFILES_iPCR
 # print("OUTFILES=", OUTFILES, "\n")
 
+NORM_EXT=[e.replace("cov","norm") for e in EXT+EXTFLAT]
+OUT_NORM_FILES=expand(os.path.join(config["OUTDIR"],"coverage", "cDNA", "{s}", "{s}{e}"), s=config['cDNA']["SAMPLES"], e=NORM_EXT)
+OUT_MERGED_NORM_FILES=expand(os.path.join(config["OUTDIR"],"coverage", "{s}{e}"), s=config['cDNA']["REPLICATES"], e=NORM_EXT)
+
+print(OUT_MERGED_NORM_FILES)
+
 if ASSEMBLY == "hg19":
   CHROMSIZES="/home/ludo/DATA/local/data/genomes/hg19/hg19.chrom.sizes"
 elif ASSEMBLY == "criGri1":
@@ -88,7 +97,7 @@ elif ASSEMBLY == "SL3":
 
 rule bed2coverage:
   input:
-    OUTFILES
+    OUTFILES , OUT_NORM_FILES, OUT_MERGED_NORM_FILES
   output:
     temp(touch("bed2coverage.done"))
 
@@ -112,22 +121,91 @@ rule _bed2coverage_chr:
     " export BED2COVERAGE_EXE={CODE_BASE_BED2COV}'bed2coverage' ; "
     " {BED2COVERAGE} -a {output.all} -p {output.plus} -m {output.minus} -c {params.s} -s {CHROMSIZES} {input} ; "
 
-rule _bed2coverage:
+rule merge_coverage_chrs_cdna:
+  wildcard_constraints:
+#    # this rule should not match to "..._norm.bw" files; exclude this using the constraints
+#    # e="/^((?!_norm).)*$/"
+    e=".cov.*"
+  # merge cDNA coverage files over all chromosomes 
   input:
-    os.path.join(OUTDIR, "SuRE-counts.txt.gz")
+    expand(os.path.join(config["OUTDIR"],"coverage", "cDNA", "{{s}}", "{{s}}_{c}{{e}}.bw"), c=CHR_TARGET+CHR_AVAIL)
   output:
-    all="{type}/{sample}/{sample}.cov.bw",
-    plus="{type}/{sample}/{sample}.cov.plus.bw",
-    minus="{type}/{sample}/{sample}.cov.minus.bw",
-    flat="{type}/{sample}/{sample}.covflat.bw",
-    flatplus="{type}/{sample}/{sample}.covflat.plus.bw",
-    flatminus="{type}/{sample}/{sample}.covflat.minus.bw"
-  params:
-    s="{sample}"
+    os.path.join(config["OUTDIR"],"coverage", "cDNA", "{s}", "{s}{e}.bw")
   resources:
-    ram=50
+    ram=64
   conda: CONDA_ENV
   shell:
-    " export BED2COVERAGE_EXE={CODE_BASE_BED2COV}'bed2coverage' ; "
-    " {BED2COVERAGE} {input} {output.all} {output.plus} {output.minus} {params.s} {CHROMSIZES} ; "
+    "python {MERGE_COVERAGE_CHRS} --inbw {input} --outfname {output}"
+
+rule merge_coverage_chrs_ipcr:
+  wildcard_constraints:
+#    # this rule should not match to "..._norm.bw" files; exclude this using the constraints
+#    # e="/^((?!_norm).)*$/"
+    e=".cov.*"
+  input:
+    expand(os.path.join(config["OUTDIR"],"coverage", "iPCR", "iPCR_{c}{{e}}.bw"), c=CHR_TARGET+CHR_AVAIL)
+  output:
+    os.path.join(config["OUTDIR"],"coverage", "iPCR", "iPCR{e}.bw")
+  resources:
+    ram=64
+  conda: CONDA_ENV
+  shell:
+    # "# merge iPCR coverage files over all chromosomes"
+    "python {MERGE_COVERAGE_CHRS} --inbw {input} --outfname {output}"
+
+rule coverage2norm:
+  wildcard_constraints:
+    # this rule should match empty string, or ".plus" or ".minus". empty string
+    # is by default not allowed as wildcard, so set the constraint explicitly
+    # here:
+    e=".*"
+  input:
+    cdna=os.path.join(config["OUTDIR"],"coverage", "cDNA", "{s}", "{s}.cov{e}.bw"),
+    ipcr=os.path.join(config["OUTDIR"],"coverage", "iPCR", "iPCR.cov{e}.bw")
+  output:
+    os.path.join(config["OUTDIR"],"coverage", "cDNA", "{s}", "{s}.norm{e}.bw")
+  resources:
+    ram=89
+  conda: CONDA_ENV
+  shell:
+    # "# norm cDNA sample based on iPCR sample"
+    "python {COVERAGE2NORM} --out {output} --cdna {input.cdna} --input {input.ipcr}"
+
+
+def get_replicates(wildcards):
+  return([ os.path.join(config["OUTDIR"],"coverage", "cDNA", s, s+wildcards.e)  for s in config["cDNA"]["REPLICATES"][wildcards.r] ])
+
+rule merge_replicate_bw:
+  wildcard_constraints:
+    e="\.norm.*bw"
+  input:
+    get_replicates
+  output:
+    os.path.join(config["OUTDIR"],"coverage", "{r}{e}")
+  resources:
+    ram=79
+  params:
+    chrs=["\"chr"+str(c)+"\"" for c in config["CHR_TARGET"]]
+  shell:
+    "python {MERGE_REPLICATE_BW} --bigwigs {input} --outfname {output} -v --chrs {params.chrs}"
+
+
+# rule _bed2coverage:
+#   input:
+#     os.path.join(OUTDIR, "SuRE-counts.txt.gz")
+#   output:
+#     all="{type}/{sample}/{sample}.cov.bw",
+#     plus="{type}/{sample}/{sample}.cov.plus.bw",
+#     minus="{type}/{sample}/{sample}.cov.minus.bw",
+#     flat="{type}/{sample}/{sample}.covflat.bw",
+#     flatplus="{type}/{sample}/{sample}.covflat.plus.bw",
+#     flatminus="{type}/{sample}/{sample}.covflat.minus.bw"
+#   params:
+#     s="{sample}"
+#   resources:
+#     ram=50
+#   conda: CONDA_ENV
+#   shell:
+#     " export BED2COVERAGE_EXE={CODE_BASE_BED2COV}'bed2coverage' ; "
+#     " {BED2COVERAGE} {input} {output.all} {output.plus} {output.minus} {params.s} {CHROMSIZES} ; "
 

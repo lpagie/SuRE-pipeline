@@ -254,7 +254,7 @@ FORW="${FASTQ_FNAMES[0]}"
 REV="${FASTQ_FNAMES[1]}"
 BAM="${OUTDIR}/${BASENAME}.bam"
 
-CMD="(${BOWTIE2} -p ${NCORES} -x ${BOWTIE2_REFSEQ} -1 $FORW -2 $REV -X ${MAX_INSERT_LENGTH} | \
+CMD="(${BOWTIE2}  --sam-no-qname-trunc -p ${NCORES} -x ${BOWTIE2_REFSEQ} -1 $FORW -2 $REV -X ${MAX_INSERT_LENGTH} | \
   ${SAMTOOLS} sort -n - -o ${BAM} -m 2G -T ${BAM%.bam}_srt ) 2>> ${STATS}"
 #   ${SAMTOOLS} view -b -f2 -u - -o - | \
 

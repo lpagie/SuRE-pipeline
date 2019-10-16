@@ -65,7 +65,7 @@ def init(options):
     atexit.register(log_close)
 
 def log(msg):
-    log_out.write("iPCR_bam_to_annotBed.py: %s" % msg)
+    log_out.write("iPCR_bam_to_annotBed.py: %s\n" % msg)
     log_out.flush()
 
 
@@ -88,8 +88,6 @@ def import_VCF(vcf_fname):
         if _c is '':
             _c = record.CHROM
         assert _c == record.CHROM
-        # insert record in tree if it is an INDEL
-        # if record.is_indel:
         tree.insert_interval(Interval(record.start, record.end, record))
     return(tree)
 
@@ -99,16 +97,17 @@ def open_bam(bam_fname):
     # check whether bam is name sorted
     head = bam.head(100)
     c = 0
+    regex = re.compile(r'\s.*$')
     for r1 in head:
         r2 = next (head)
         c += 1
         try:
-            assert r1.query_name == r2.query_name
+            assert regex.sub('',r1.query_name) == regex.sub('',r2.query_name)
         except AssertionError as error:
             print(r1)
             print(r2)
             print(error)
-            print("error opening bam file, read %d pairs" % c)
+            print("error opening bam file (reads not sorted along name, or single reads missing),\n read %d pairs" % c)
             sys.exit()
     return bam
 
@@ -153,32 +152,54 @@ def annotate_snp(snp, r1, r2, patmat):
         try:
             # check if observed base is either reference or alternative (1, 2, etc)
             snp_var = snp.alleles.index(snp_base) # 0: reference, 1..: 1st (2nd, 3rd, etc) allele
-            if snp_var == int(snp.samples[0].data.GT.split('|')[patmat=='maternal']):
+        except ValueError:
+            snp_var = -1 # base is not a known allele
+            snp_patmat = "unknown_allele"
+
+        gt=snp.samples[0].data.GT
+        if len(gt) > 1: # chromosome is diploid
+            gt=re.split("[\|/\\\]",gt)
+            if snp_var == int(gt[patmat=='maternal']):
                 # base is what is expected according to parent 'patmat'
                 snp_patmat = patmat
-            elif snp_var == int(snp.samples[0].data.GT.split('|')[patmat!='maternal']):
+            elif snp_var == int(gt[patmat!='maternal']):
                 # base is on parental chromosome other than expected
                 snp_patmat = 'maternal_unexpected' if patmat=='paternal' else 'paternal_unexpected'
             else:
                 # base is known allele but neither of the two parental alleles
                 snp_patmat = "non_paternal_allele"
-        except ValueError:
-            snp_var = -1 # base is not a known allele
-            snp_patmat = "unknown_allele"
+        else: # chromosome is haploid
+            if snp_var == int(gt):
+                # base is what is expected according to parent 'patmat'
+                snp_patmat = patmat
+            else:
+                # base is known allele but neither of the two parental alleles
+                snp_patmat = "non_paternal_allele"
         return (snp_base, snp_var, snp_patmat)
 
     snp_ID = snp.ID
-    snp_abs_pos = snp.start
+    # snp_abs_pos = snp.start # LP190315; this assignment erroneously assign 0-based coordinate to 1-based VCF data
+    snp_abs_pos = snp.POS
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
     snp_type    = snp.var_type
     snp_subtype = snp.var_subtype
     annot = []
 
-    if snp.POS>r1.reference_end and snp.POS<=r2.reference_start:
-        # snp in between r1 and r2
+    # depending on position and overlap of SNP with fragment and read sequences
+    # construct the SNP annotation
+    # if snp.POS>r1.reference_end and snp.POS<=r2.reference_start: # LP190315; better to work uniformly in 0-based coord system
+    if snp.start>=r1.reference_end and snp.end<=r2.reference_start: # LP190315; use >=, <= because test for non-overlap
+        # snp is in between r1 and r2; use IUPAC annotation
         try: 
-            snp_base = iupac(snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='paternal'])], 
-                             snp.alleles[int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])])
+            ## WHAT IF GENOME IS HAPLOID, AS IN chrX? 
+            # In that case length of GT is 1
+            if len(snp.samples[0].data.GT)==1:
+                # HAPLOID
+                snp_base = snp.alleles[int(snp.samples[0].data.GT)]
+            else:
+                # DIPLOID
+                gt=re.split("[\|/\\\]",snp.samples[0].data.GT)
+                snp_base = iupac(gt[0],gt[1])
         except NameError:
             print("error in annotate_snp_in_read with SNP %s" % snp)
             print(snp.alleles)
@@ -190,9 +211,11 @@ def annotate_snp(snp, r1, r2, patmat):
         annot = [(snp_base, snp_var, snp_patmat)]
     else:
         # snp overlaps with either one or both reads
-        if snp.POS<r1.reference_end:
+        # if snp.POS<r1.reference_end: # LP190415; use 0-based coord system
+        if snp.start < r1.reference_end:
             annot.append(annotate_snp_in_read(r1))
-        if snp.POS > r2.reference_start:
+        # if snp.POS > r2.reference_start: # LP190415; use 0-based coord system
+        if snp.end > r2.reference_start:
             annot.append(annotate_snp_in_read(r2))
 
     return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
@@ -200,33 +223,36 @@ def annotate_snp(snp, r1, r2, patmat):
 
 def annotate_indel(snp, r1, r2, patmat):
     def annotate_indel_in_read(r):
-        # overlap with read 'r'
-        snp_var = int(snp.samples[0].data.GT.split('|')[patmat=='maternal'])
+        gt=snp.samples[0].data.GT
+        # SNP overlaps with read 'r'
+        gt=snp.samples[0].data.GT
+        if len(gt) > 1: # chromosome is diploid
+            gt=re.split("[\|/\\\]",gt)
+            snp_var = int(gt[patmat=='maternal'])
+        else: # chromosome is haploid
+            snp_var = int(gt)
+        # expect_seq is sequence according to VCF and GT and assigned parent
         expect_seq = snp.alleles[snp_var]
-        # if alignment contains INDELs the read- and genome-positions are not synchronous.
-        # In that case the CIGAR string needs to be used to infer corresponding positions
-        # if I:D:N:S:P in CIGAR ....
-        if re.match(".*[IDNSP].*", r.cigarstring):
-            poss =  range(snp.start, snp.start+len(expect_seq))
-            aln_pairs = r.get_aligned_pairs(with_seq=True)
-            bases = [x[2] for x in aln_pairs if x[1] in poss]
-            obs_seq = ''.join(bases)
-        else:
-            rel_pos = snp.start - r.reference_start # both coord systems are 0-based
-            obs_seq = r.query_sequence[rel_pos:min(rel_pos+len(expect_seq), len(r.query_sequence))]
+        # LP190315: I don't want to know about the bases in the genome
+        # sequence, I want to know the sequence 'observed' in the read
+        # sequence. If the read contains INDELs and such the observation does
+        # not correspond to expectation, more or less by definition.
+        rel_pos = snp.start - r.reference_start # both coord systems are 0-based
+        obs_seq = r.query_sequence[rel_pos:rel_pos+len(expect_seq)]
         if obs_seq == expect_seq:
-            # snp_var doesn't change
+            # snp_var remains the avlue determined by parental assignment
             snp_base = expect_seq
             snp_patmat = patmat
         else:
             snp_var = -3 # observed sequence differs from expected sequence, unclear whether observed is another allele or sequencing error or something else
             snp_patmat = "unexpected"
             snp_base = obs_seq
-
+    
         return (snp_base, snp_var, snp_patmat)
 
     snp_ID      = snp.ID
-    snp_abs_pos = snp.start
+    # snp_abs_pos = snp.start # LP190315; this assignment erroneously assign 0-based coordinate to 1-based VCF data
+    snp_abs_pos = snp.POS
     snp_rel_pos = snp.start - r1.reference_start # both coord systems are 0-based
     snp_max_end = snp.start + max(len(allele) for allele in snp.alleles) 
     snp_type    = snp.var_type
@@ -234,8 +260,10 @@ def annotate_indel(snp, r1, r2, patmat):
     annot = []
 
     if snp.start < r1.reference_start or snp_max_end > r2.reference_end:
-        # snp overlaps fragment boundaries; discard snp completely
-        return None
+        # snp overlaps fragment boundaries; discard snp completely, return annotation indicating SNP cannot be annotated
+        snp_var = -6 # SNP overlaps with fragment boundaries
+        annot = [('.', snp_var, "boundary_ovl")]
+        return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
     elif snp_max_end > r1.reference_end and snp.start < r2.reference_start:
         # snp does not overlap completely with either read; check if homolgous alleles
         if re.match(r'^(.*)\|\1$',snp.samples[0].data.GT): # both parents have same allele
@@ -248,10 +276,12 @@ def annotate_indel(snp, r1, r2, patmat):
         annot = [(snp_base, snp_var, snp_patmat)]
         return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
     else:
-        if snp_max_end < r1.reference_end:
+        # if snp_max_end < r1.reference_end: # LP190315; both are end-coordinates so use '<=' to test whether SNP-end falls within 'r1'
+        if snp_max_end <= r1.reference_end:
             # snp overlaps completely with read1
             annot.append(annotate_indel_in_read(r1))
-        if snp.start > r2.reference_start:
+        # if snp.start > r2.reference_start: # LP190315; both are (0-based) start-coordinates so use '<=' to test whether SNP-start falls within 'r2'
+        if snp.start >= r2.reference_start:
             # snp overlaps completely with read2
             annot.append(annotate_indel_in_read(r2))
     return (snp_rel_pos, snp_ID, annot, snp_type, snp_subtype, snp_abs_pos)
@@ -259,11 +289,12 @@ def annotate_indel(snp, r1, r2, patmat):
 def annotate_fragment(r1, r2, vcf, patmat):
     # find overlapping SNPs
     # sam coordinates are 0-based
-    snps = vcf.find(r1.reference_start, r2.reference_end-1) # reference_end gives "one past the last aligned residue" but is also 0-based (pysam manual). Nevertheless I found I need the 'end-1' anyway, not to include SNPs beyond the end of the alignment
+    # snps = vcf.find(r1.reference_start, r2.reference_end-1) # reference_end gives "one past the last aligned residue" but is also 0-based (pysam manual). Nevertheless I found I need the 'end-1' anyway, not to include SNPs beyond the end of the alignment
+    snps = vcf.find(r1.reference_start, r2.reference_end) # LP190315; should really be using the 'half-open' end coordinate. Together with above changes I assume this should now be the correct expression
     snp_annot = []
     # check SNP base/sequence identity
-    if len(snps) is 0:
-        return
+#    if len(snps) is 0:
+#        return snp_annot
     for s in snps:
         if s.value.is_snp:
             snp_annot.append(annotate_snp(s.value, r1, r2, patmat))
@@ -301,7 +332,7 @@ def _stringify_fragment(r1, r2, snp_annot):
     md2 = str(r2.get_tag('MD') if 'MD' in [e[0] for e in r2.get_tags()] else '')
     cigar1 = r1.cigarstring or ''
     cigar2 = r2.cigarstring or ''
-    if None is not snp_annot:
+    if len(snp_annot)>0 and None is not snp_annot:
         snp_abs_pos = _stringify([pos  for annot in snp_annot for pos in [annot[5]]*len(annot[2])])
         snp_rel_pos = _stringify([pos  for annot in snp_annot for pos in [annot[0]]*len(annot[2])])
         snp_ID      = _stringify([ID   for annot in snp_annot for ID  in [annot[1]]*len(annot[2])])
@@ -379,6 +410,8 @@ def main(options):
         snp_annot = annotate_fragment(r1, r2, vcf, options.patmat)
         if snp_annot is not None:
             write_fragment(r1, r2, snp_annot, out)
+        #else:
+        #    log(fragment)
     print("processing done")
     out.close()
     print("output closed")
